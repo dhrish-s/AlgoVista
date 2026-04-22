@@ -4,7 +4,7 @@ import { Brain, Send, Sparkles, AlertCircle, HelpCircle, Trophy } from 'lucide-r
 import { useStore } from '../store/useStore';
 import { StructuredProblem } from '../types';
 import { cn } from '../lib/utils';
-import { GoogleGenAI } from '@google/genai';
+import { getAIManager } from '../services/ai/AIProviderManager';
 
 interface CoachPanelProps {
   problem: StructuredProblem;
@@ -34,38 +34,29 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
     setIsTyping(true);
 
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error("No API key");
+      const aiManager = getAIManager();
+      if (!aiManager) {
+        throw new Error("AI Manager not initialized.");
       }
-      
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          { role: 'user', parts: [{ text: `
-            You are a premium LeetCode Engineering Tutor.
-            User Objective: Learn to solve "${problem.title}".
-            Difficulty: ${problem.difficulty}.
-            Context: The user has explained their reasoning as: "${userReasoning}".
-            
-            STRICT RULES:
-            1. NEVER provide direct code.
-            2. Focus on "Pattern Recognition".
-            3. Use the "Socratic Method": ask clarifying questions.
-            4. If the user is stuck, give a "Minimal Hint" (e.g., mention a data structure).
-            5. Evaluate their reasoning for logical gaps (edge cases, complexity).
-    
-            Chat History:
-            ${newMsgs.map(m => `${m.role}: ${m.content}`).join('\n')}
-            
-            New User Input: ${input}
-          ` }]}
-        ]
-      });
 
-      setMessages(prev => [...prev, { role: 'ai', content: response.text || "I'm having trouble thinking today. Try again?" }]);
+      const { data: coachResponse } = await aiManager.coachMessage(
+        problem,
+        input,
+        newMsgs,
+        userReasoning,
+        { task: 'coach' }
+      );
+
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        content: coachResponse.content || "I'm having trouble thinking today. Try again?" 
+      }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'ai', content: "I'm having trouble connecting to the brain. Let's try to break down the problem together manually. What's the main constraint here?" }]);
+      console.error('Coach message error:', e);
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        content: "I'm having trouble connecting to the brain. Let's try to break down the problem together manually. What's the main constraint here?" 
+      }]);
     } finally {
       setIsTyping(false);
     }

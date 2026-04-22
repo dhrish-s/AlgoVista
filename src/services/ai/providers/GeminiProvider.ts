@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AIProvider, AIProviderID, AIResponse, ReasoningEvaluation, HintGeneration, CodeExplanation, AIRequestOptions } from '../types';
+import { AIProvider, AIProviderID, AIResponse, ReasoningEvaluation, HintGeneration, CodeExplanation, CoachMessage, AIRequestOptions } from '../types';
 import { StructuredProblem, ExecutionStep } from '../../../types';
 
 export class GeminiProvider implements AIProvider {
@@ -203,5 +203,42 @@ export class GeminiProvider implements AIProvider {
     }
 
     return { data: JSON.parse(response.text || '[]') };
+  }
+
+  async coachMessage(problem: StructuredProblem, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions): Promise<AIResponse<CoachMessage>> {
+    const historyText = chatHistory.map(m => `${m.role === 'user' ? 'User' : 'Coach'}: ${m.content}`).join('\n');
+    
+    const prompt = `You are a premium LeetCode Engineering Tutor.
+User Objective: Learn to solve "${problem.title}".
+Difficulty: ${problem.difficulty || 'Unknown'}.
+${userReasoning ? `Context: The user has explained their reasoning as: "${userReasoning}".` : ''}
+
+STRICT RULES:
+1. NEVER provide direct code.
+2. Focus on "Pattern Recognition".
+3. Use the "Socratic Method": ask clarifying questions.
+4. If the user is stuck, give a "Minimal Hint" (e.g., mention a data structure).
+5. Evaluate their reasoning for logical gaps (edge cases, complexity).
+
+Chat History:
+${historyText}
+
+New User Input: ${userMessage}`;
+
+    const response = await this.ai.models.generateContent({
+      model: options?.model || "gemini-3-flash-preview",
+      contents: prompt
+    });
+
+    if (options?.signal?.aborted) {
+      throw new Error('AbortError');
+    }
+
+    return {
+      data: {
+        content: response.text || "I'm having trouble thinking today. Try again?",
+        isError: false
+      }
+    };
   }
 }

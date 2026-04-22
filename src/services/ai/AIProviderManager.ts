@@ -52,6 +52,10 @@ export class AIProviderManager {
      return this.executeWithRetry(() => this.getProvider(options).generateSteps(problem, code, testCase), options);
   }
 
+  async coachMessage(problem: any, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions) {
+    return this.executeWithRetry(() => this.getProvider(options).coachMessage(problem, userMessage, chatHistory, userReasoning), options);
+  }
+
   private async executeWithRetry<T>(task: () => Promise<T>, options?: AIRequestOptions, retries: number = 1): Promise<T> {
     try {
       return await task();

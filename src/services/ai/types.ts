@@ -27,6 +27,11 @@ export interface CodeExplanation {
   potentialBugs: string[];
 }
 
+export interface CoachMessage {
+  content: string;
+  isError?: boolean;
+}
+
 export interface AIResponse<T> {
   data: T;
   raw?: any;
@@ -44,6 +49,7 @@ export interface AIProvider {
   generateHints(problem: StructuredProblem, userCode: string, options?: AIRequestOptions): Promise<AIResponse<HintGeneration>>;
   explainCode(problem: StructuredProblem, code: string, options?: AIRequestOptions): Promise<AIResponse<CodeExplanation>>;
   generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>>;
+  coachMessage(problem: StructuredProblem, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions): Promise<AIResponse<CoachMessage>>;
 }
 
 export interface AIRequestOptions {
