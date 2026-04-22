@@ -1,0 +1,6 @@
+{
+  "name": "AlgoVista",
+  "description": "Premium 3D LeetCode tutor with step-by-step visual code execution and AI coaching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["AI Tutoring", "3D Visualization", "Interactive Code Editor"]
+}
