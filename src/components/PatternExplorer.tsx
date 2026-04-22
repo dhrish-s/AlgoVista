@@ -16,7 +16,7 @@ export const PatternExplorer: React.FC = () => {
       <div className="flex flex-col gap-2">
          <h1 className="text-3xl font-bold text-white tracking-tight">Pattern Mastery</h1>
          <p className="text-slate-500 text-sm max-w-xl">
-           The secret to 100+ LeetCode problems isn't memorization—it's recognizing these core patterns.
+           The secret to 100+ LeetCode problems isn't memorization-it's recognizing these core patterns.
          </p>
       </div>
 

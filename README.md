@@ -240,7 +240,7 @@ User Input
 
 ## 🎯 Why This Project Matters
 
-AlgoVista is not just a coding tool — **it's a thinking system**.
+AlgoVista is not just a coding tool - **it's a thinking system**.
 
 It demonstrates:
 - advanced frontend engineering
@@ -279,7 +279,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🧭 Final Thought
 
-**Good engineers don't just write code — they understand why it works.**
+**Good engineers don't just write code - they understand why it works.**
 
 This platform is designed to train exactly that.
 
