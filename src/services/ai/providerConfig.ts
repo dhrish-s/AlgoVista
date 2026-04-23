@@ -102,9 +102,71 @@ export const normalizeProblem = (data: Partial<StructuredProblem>): StructuredPr
   parsingConfidence: typeof data.parsingConfidence === 'number' ? Math.max(0, Math.min(1, data.parsingConfidence)) : 0.75,
   requiresUserConfirmation: Boolean(data.requiresUserConfirmation),
   starterCode: data.starterCode || '',
-  approaches: Array.isArray(data.approaches) ? data.approaches : [],
+  approaches: normalizeApproaches(data.approaches),
   hints: data.hints || []
 });
+
+const normalizeApproaches = (approaches: any): StructuredProblem['approaches'] => {
+  if (!Array.isArray(approaches)) return [];
+
+  return approaches
+    .filter((approach) => approach && typeof approach === 'object')
+    .map((approach: any, index: number) => {
+      const name = typeof approach.name === 'string' && approach.name.trim()
+        ? approach.name.trim()
+        : `Approach ${index + 1}`;
+      const explanation = typeof approach.explanation === 'string' && approach.explanation.trim()
+        ? approach.explanation.trim()
+        : 'No explanation available yet.';
+      const inferred = inferComplexity(name, explanation);
+      const time = cleanComplexity(approach?.complexity?.time) || inferred.time || 'Unknown';
+      const space = cleanComplexity(approach?.complexity?.space) || inferred.space || 'Unknown';
+
+      return {
+        id: typeof approach.id === 'string' && approach.id.trim() ? approach.id.trim() : `approach-${index + 1}`,
+        name,
+        complexity: { time, space },
+        explanation,
+        isOptimal: Boolean(approach.isOptimal),
+      };
+    });
+};
+
+const cleanComplexity = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (/^o\(/i.test(trimmed)) return trimmed.replace(/^o/i, 'O');
+  if (/^O\(/.test(trimmed)) return trimmed;
+  return trimmed;
+};
+
+const inferComplexity = (name: string, explanation: string): { time?: string; space?: string } => {
+  const text = `${name} ${explanation}`.toLowerCase();
+
+  if (text.includes('brute force') || text.includes('nested loop') || text.includes('double loop')) {
+    return { time: 'O(n^2)', space: 'O(1)' };
+  }
+
+  if (
+    text.includes('hash map') ||
+    text.includes('hashmap') ||
+    text.includes('dictionary') ||
+    text.includes('one pass')
+  ) {
+    return { time: 'O(n)', space: 'O(n)' };
+  }
+
+  if (text.includes('two pointers') || text.includes('sliding window')) {
+    return { time: 'O(n)', space: 'O(1)' };
+  }
+
+  if (text.includes('sort')) {
+    return { time: 'O(n log n)', space: 'O(1)' };
+  }
+
+  return {};
+};
 
 export const normalizeSteps = (data: unknown): ExecutionStep[] => {
   if (!Array.isArray(data)) {

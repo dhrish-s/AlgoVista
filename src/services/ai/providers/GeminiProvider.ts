@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIProvider, AIProviderID, AIResponse, ReasoningEvaluation, HintGeneration, CodeExplanation, CoachMessage, AIRequestOptions } from '../types';
 import { StructuredProblem, ExecutionStep } from '../../../types';
-import { getDefaultModelNames, getProviderApiKey } from '../providerConfig';
+import { getDefaultModelNames, getProviderApiKey, normalizeProblem } from '../providerConfig';
 
 export class GeminiProvider implements AIProvider {
   id: AIProviderID = 'gemini';
@@ -19,7 +19,13 @@ export class GeminiProvider implements AIProvider {
       Set parsingConfidence from 0 to 1 based on how complete and specific the input is.
       Set requiresUserConfirmation to true when the title, statement, examples, or constraints are inferred from sparse input.
       CRITICAL: You MUST generate at least 2 distinct approaches (e.g., Brute Force and Optimal) in the 'approaches' field. 
-      Each approach must have a clear 'name', 'complexity' (time/space), and 'explanation'.
+      Each approach MUST include:
+      - name (string)
+      - explanation (string)
+      - complexity.time (Big-O string)
+      - complexity.space (Big-O string)
+      - isOptimal (boolean)
+      Do not omit complexity for any approach.
       \n\nInput: ${input}`,
       config: {
         abortSignal: options?.signal,
@@ -70,15 +76,15 @@ export class GeminiProvider implements AIProvider {
     });
 
     const data = JSON.parse(response.text || '{}');
-    return { 
-      data: {
+    return {
+      data: normalizeProblem({
         ...data,
         id: Math.random().toString(36).substr(2, 9),
         source: 'mixed',
         parsingConfidence: typeof data.parsingConfidence === 'number' ? data.parsingConfidence : 1,
         requiresUserConfirmation: Boolean(data.requiresUserConfirmation),
         inferredPatterns: []
-      } 
+      })
     };
   }
 

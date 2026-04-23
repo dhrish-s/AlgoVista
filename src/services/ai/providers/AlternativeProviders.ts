@@ -23,7 +23,13 @@ import {
 const PARSE_INSTRUCTIONS = `Parse this LeetCode-style problem into JSON.
 Return only JSON with: title, difficulty, statement, examples, constraints, starterCode, approaches, inferredPatterns, parsingConfidence, requiresUserConfirmation.
 parsingConfidence must be 0 to 1. Set requiresUserConfirmation true when the prompt is sparse or inferred.
-Create at least two approaches when enough information is available.`;
+Create at least two approaches when enough information is available.
+For every approach include:
+- name (string)
+- explanation (string)
+- complexity: { time: "O(...)", space: "O(...)" }
+- isOptimal (boolean)
+Do not omit complexity.time or complexity.space.`;
 
 const STEP_INSTRUCTIONS = `Return only a JSON array of execution steps.
 Every step must include: id string, line number, explanation string, operationType string, variables object, visualState object.
