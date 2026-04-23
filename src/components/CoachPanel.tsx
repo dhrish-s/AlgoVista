@@ -19,7 +19,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const latestReqRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { userReasoning } = useStore();
+  const { userReasoning, currentProvider, providerStatus, setCurrentProvider, setProviderStatus } = useStore();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -49,7 +49,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
       setAbortController(controller);
       const reqId = ++latestReqRef.current;
 
-      const { data: coachResponse } = await aiManager.coachMessage(
+      const { data: coachResponse, meta } = await aiManager.coachMessage(
         problem,
         input,
         newMsgs,
@@ -64,17 +64,39 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
         throw err;
       }
 
+      if (meta) {
+        setCurrentProvider(meta.provider);
+        setProviderStatus(meta.status, meta.message);
+      }
+
+      if (!coachResponse || coachResponse.isError || typeof coachResponse.content !== 'string' || !coachResponse.content.trim()) {
+        throw new Error('Malformed coach response');
+      }
+
       setMessages(prev => [...prev, { 
         role: 'ai', 
-        content: coachResponse.content || "I'm having trouble thinking today. Try again?" 
+        content: coachResponse.content
       }]);
-    } catch (e) {
+    } catch (e: any) {
       // Ignore cancellations and stale results
-      if ((e as any)?.name === 'AbortError' || (e as any)?.message?.toLowerCase().includes('cancel')) return;
+      if (e.name === 'AbortError' || e.message?.toLowerCase().includes('cancel')) {
+        setIsTyping(false);
+        return;
+      }
+      // Distinguish between different error types
+      let errorMsg = "I could not get a reliable coach response. We can still reason it out: what is the main constraint that shapes the algorithm?";
+      if (e.message?.includes('API key') || e.message?.includes('unavailable')) {
+        errorMsg = "The coach provider is unavailable. Check your API key or switch to an available provider, then try again.";
+      } else if (e.message?.includes('provider')) {
+        errorMsg = "The selected coach provider could not respond. AlgoVista will use the configured fallback when available; please try again.";
+      } else if (e.message?.includes('Malformed coach response')) {
+        errorMsg = "The coach returned an empty or malformed response. Try rephrasing your question or ask for a small hint.";
+      }
       console.error('Coach message error:', e);
+      setProviderStatus('failed', errorMsg);
       setMessages(prev => [...prev, { 
         role: 'ai', 
-        content: "I'm having trouble connecting to the brain. Let's try to break down the problem together manually. What's the main constraint here?" 
+        content: errorMsg
       }]);
     } finally {
       setIsTyping(false);
@@ -100,7 +122,9 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
            </div>
            <div>
               <h3 className="text-xs font-bold text-white uppercase tracking-tight">AI Reasoning Coach</h3>
-              <p className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest">Minimal Hint Mode</p>
+              <p className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest">
+                {currentProvider} / {providerStatus === 'fallback' ? 'Fallback Active' : 'Minimal Hint Mode'}
+              </p>
            </div>
         </div>
         <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />

@@ -29,12 +29,19 @@ export const ProblemSolver: React.FC = () => {
     isGeneratingSteps,
     setStepGenerationState,
     stepGenerationError,
+    stepTruncated,
     resetSession,
     isPlaying,
     setIsPlaying,
     playbackSpeed,
     panelLayout,
-    setPanelLayout
+    setPanelLayout,
+    parseConfidence,
+    currentProvider,
+    providerStatus,
+    providerMessage,
+    setCurrentProvider,
+    setProviderStatus
   } = useStore();
 
   const [selectedApproach, setSelectedApproach] = useState<ApproachOption | null>(null);
@@ -81,7 +88,7 @@ export const ProblemSolver: React.FC = () => {
     const newController = new AbortController();
     setAbortController(newController);
 
-    setStepGenerationState(true, null);
+    setStepGenerationState(true, null, false);
     try {
       const testCase = currentProblem.examples[0];
       let steps;
@@ -94,14 +101,36 @@ export const ProblemSolver: React.FC = () => {
         throw new Error("No approach selected.");
       }
       
+      const generationFeedback = (steps as any).generationFeedback;
+      const providerMeta = (steps as any).providerMeta;
+      if (providerMeta) {
+        setCurrentProvider(providerMeta.provider);
+        setProviderStatus(providerMeta.status, providerMeta.message);
+      }
       setSteps(steps);
       setStepIndex(0);
       setIsPlaying(true);
+      setStepGenerationState(false, generationFeedback?.truncated
+        ? "The trace was longer than the 50-step safety limit, so the visualization shows the first reliable portion. Try a smaller example input or simplify the code to see more detail."
+        : null,
+        Boolean(generationFeedback?.truncated)
+      );
     } catch (e: any) {
-      if (e.name === 'AbortError' || e.message?.includes('abort')) return;
-      setStepGenerationState(false, e.message || "Visualization engine failed for this problem.");
-    } finally {
-      setStepGenerationState(false, null);
+      if (e.name === 'AbortError' || e.message?.includes('abort')) {
+        setStepGenerationState(false, null, false);
+        return;
+      }
+      let errorMsg = "Visualization is unavailable for this run. Try a smaller sample input, a simpler approach, or regenerate the trace.";
+      if (e.message?.includes('Invalid step trace')) {
+        errorMsg = "The generated trace did not pass validation, so AlgoVista did not visualize it. Try a simpler approach or adjust your code, then regenerate.";
+      } else if (e.message?.includes('Step trace is not an array')) {
+        errorMsg = "The provider returned a malformed trace. Regenerate the visualization, or switch providers if this keeps happening.";
+      } else if (e.message?.includes('No valid steps found')) {
+        errorMsg = "The trace contained no usable execution steps. Try a different approach, smaller test case, or clearer code.";
+      } else if (e.message?.includes('provider')) {
+        errorMsg = "The current AI provider could not generate a trace. Check provider settings or API key, then try again.";
+      }
+      setStepGenerationState(false, errorMsg);
     }
   };
 
@@ -139,6 +168,28 @@ export const ProblemSolver: React.FC = () => {
                   {unlockedEditor ? 'Ready' : 'Thinking'}
                 </span>
              </div>
+          </div>
+
+          <div className="px-5 py-3 border-b border-slate-800 bg-slate-950/20 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
+              <span className="text-slate-500">Parse Confidence</span>
+              <span className={cn(
+                parseConfidence >= 0.8 ? "text-emerald-400" : parseConfidence >= 0.55 ? "text-amber-400" : "text-rose-400"
+              )}>
+                {parseConfidence >= 0.8 ? 'High' : parseConfidence >= 0.55 ? 'Medium' : 'Low'} ({Math.round(parseConfidence * 100)}%)
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
+              <span className="text-slate-500">AI Provider</span>
+              <span className={cn(
+                providerStatus === 'fallback' ? "text-amber-400" : providerStatus === 'failed' || providerStatus === 'unavailable' ? "text-rose-400" : "text-indigo-400"
+              )}>
+                {currentProvider} / {providerStatus}
+              </span>
+            </div>
+            {providerMessage && (
+              <p className="text-[10px] text-slate-500 leading-relaxed">{providerMessage}</p>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6 scrollbar-hide">
@@ -244,19 +295,24 @@ export const ProblemSolver: React.FC = () => {
                <div className="flex-1 flex items-center justify-center relative">
                   <VisualizerContainer step={activeStep} />
                   
-                  {stepGenerationError && (
+                  {(stepGenerationError || stepTruncated) && (
                     <motion.div 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="absolute inset-0 z-[60] bg-slate-950/90 flex flex-col items-center justify-center p-12 text-center"
+                      className={cn(
+                        "absolute z-[60] bg-slate-950/90 flex flex-col items-center justify-center p-8 text-center",
+                        stepGenerationError && !stepTruncated ? "inset-0" : "left-6 right-6 bottom-6 rounded-2xl border border-amber-500/20"
+                      )}
                     >
-                       <AlertCircle className="w-10 h-10 text-rose-500 mb-4" />
-                       <h4 className="text-white font-bold mb-1">Visualization Partially Halted</h4>
+                       <AlertCircle className={cn("w-10 h-10 mb-4", stepTruncated ? "text-amber-500" : "text-rose-500")} />
+                       <h4 className="text-white font-bold mb-1">
+                         {stepTruncated ? 'Visualization Limited' : 'Visualization Unavailable'}
+                       </h4>
                        <p className="text-[11px] text-slate-500 max-w-sm italic">
-                         {stepGenerationError} The AI coach is generating a verbal walkthrough instead.
+                         {stepGenerationError}
                        </p>
                        <button 
-                        onClick={() => setStepGenerationState(false, null)}
+                        onClick={() => setStepGenerationState(false, null, false)}
                         className="mt-6 px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold"
                        >
                          DISMISS

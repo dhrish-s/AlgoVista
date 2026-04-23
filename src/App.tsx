@@ -25,7 +25,7 @@ import { cn } from './lib/utils';
 import { getAIManager } from './services/ai/AIProviderManager';
 
 export default function App() {
-  const { currentProblem, setCurrentProblem, userProgress, aiSettings } = useStore();
+  const { currentProblem, userProgress, aiSettings, currentProvider, providerStatus } = useStore();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'solve' | 'patterns'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -142,6 +142,19 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+             <div className={cn(
+               "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-widest",
+               providerStatus === 'fallback'
+                ? "bg-amber-500/5 border-amber-500/20 text-amber-400"
+                : providerStatus === 'failed' || providerStatus === 'unavailable'
+                ? "bg-rose-500/5 border-rose-500/20 text-rose-400"
+                : "bg-slate-900 border-slate-800 text-slate-500"
+             )}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                <span>{currentProvider}</span>
+                <span className="text-slate-600">/</span>
+                <span>{providerStatus}</span>
+             </div>
              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 rounded-full border border-slate-800">
                 <Search className="w-3.5 h-3.5 text-slate-500" />
                 <input 

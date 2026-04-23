@@ -3,6 +3,7 @@ import { getAIManager } from './ai/AIProviderManager';
 
 export class ProblemLoaderService {
   private static latestParseRequest = 0;
+  private static readonly LOW_CONFIDENCE_THRESHOLD = 0.55;
   static detectSource(input: string): ProblemSource {
     const trimmed = input.trim();
     if (trimmed.startsWith('http') && trimmed.includes('leetcode.com')) {
@@ -43,7 +44,7 @@ export class ProblemLoaderService {
       throw err;
     }
 
-    const { data } = await aiManager.parseProblem(text, { task: 'parse', signal });
+    const { data, meta } = await aiManager.parseProblem(text, { task: 'parse', signal });
 
     // If another parse started after this one, treat this result as stale.
     if (reqId !== ProblemLoaderService.latestParseRequest) {
@@ -52,10 +53,42 @@ export class ProblemLoaderService {
       throw err;
     }
 
-    const source: ProblemSource = text.startsWith('http') ? 'leetcode-link' : 'pasted-text';
-    return {
+    const source: ProblemSource = metadata?.source || (text.startsWith('http') ? 'leetcode-link' : 'pasted-text');
+    const confidence = ProblemLoaderService.getParseConfidence(data);
+
+    if (!data?.title || !data?.statement || !Array.isArray(data.examples) || data.examples.length === 0) {
+      const err: any = new Error('Parsing failed: missing required problem details');
+      err.confidence = confidence;
+      throw err;
+    }
+
+    if (confidence < ProblemLoaderService.LOW_CONFIDENCE_THRESHOLD || data.requiresUserConfirmation) {
+      const err: any = new Error('Low confidence parsing result');
+      err.confidence = confidence;
+      throw err;
+    }
+
+    const parsedProblem = {
       ...data,
-      source
-    };
+      slug: metadata?.slug,
+      source,
+      parsingConfidence: confidence,
+      __providerMeta: meta
+    } as StructuredProblem & { __providerMeta?: typeof meta };
+
+    return parsedProblem;
+  }
+
+  private static getParseConfidence(problem: Partial<StructuredProblem>): number {
+    const rawConfidence = typeof problem.parsingConfidence === 'number' ? problem.parsingConfidence : 0;
+    const structuralSignals = [
+      Boolean(problem.title),
+      Boolean(problem.statement && problem.statement.length > 40),
+      Boolean(problem.examples?.length),
+      Boolean(problem.constraints?.length),
+      Boolean(problem.approaches?.length)
+    ];
+    const structureScore = structuralSignals.filter(Boolean).length / structuralSignals.length;
+    return Math.max(0, Math.min(1, rawConfidence || structureScore));
   }
 }

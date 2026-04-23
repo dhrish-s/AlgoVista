@@ -35,6 +35,12 @@ export interface CoachMessage {
 export interface AIResponse<T> {
   data: T;
   raw?: any;
+  meta?: {
+    provider: AIProviderID;
+    status: 'success' | 'failed' | 'fallback' | 'unavailable';
+    fallbackFrom?: AIProviderID;
+    message?: string;
+  };
   usage?: {
     promptTokens: number;
     completionTokens: number;

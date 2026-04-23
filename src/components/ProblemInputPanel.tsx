@@ -8,7 +8,24 @@ import { cn } from '../lib/utils';
 export const ProblemInputPanel: React.FC = () => {
   const [input, setInput] = useState('');
   const [abortController, setAbortController] = useState<AbortController | null>(null);
-  const { isParsing, setParsing, setCurrentProblem, setParseError, parseError } = useStore();
+  const {
+    isParsing,
+    parseConfidence,
+    setParsing,
+    setCurrentProblem,
+    setParseError,
+    setParseConfidence,
+    parseError,
+    setCurrentProvider,
+    setProviderStatus
+  } = useStore();
+
+  const confidenceLabel = parseConfidence >= 0.8 ? 'High' : parseConfidence >= 0.55 ? 'Medium' : 'Low';
+  const confidenceClass = parseConfidence >= 0.8
+    ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5'
+    : parseConfidence >= 0.55
+    ? 'text-amber-400 border-amber-500/20 bg-amber-500/5'
+    : 'text-rose-400 border-rose-500/20 bg-rose-500/5';
 
   const handleLoad = async () => {
     if (!input.trim()) return;
@@ -23,6 +40,7 @@ export const ProblemInputPanel: React.FC = () => {
     
     setParsing(true);
     setParseError(null);
+    setParseConfidence(0);
     
     try {
       const source = ProblemLoaderService.detectSource(input);
@@ -35,10 +53,26 @@ export const ProblemInputPanel: React.FC = () => {
         problem = await ProblemLoaderService.parseProblemText(input, { source }, newController.signal);
       }
 
+      const providerMeta = (problem as any).__providerMeta;
+      if (providerMeta) {
+        setCurrentProvider(providerMeta.provider);
+        setProviderStatus(providerMeta.status, providerMeta.message);
+      }
+      setParseConfidence(problem.parsingConfidence);
       setCurrentProblem(problem);
     } catch (e: any) {
       if (e.name === 'AbortError' || e.message?.includes('abort')) return;
-      setParseError(e.message || "Failed to load problem. Try pasting the full text.");
+      if (typeof e.confidence === 'number') {
+        setParseConfidence(e.confidence);
+      }
+      const errorMsg = e.message?.includes('Low confidence') 
+        ? "Parsing confidence is low. Please paste the full problem statement, examples, and constraints so AlgoVista can build a reliable workspace."
+        : e.message?.includes('missing required problem details')
+        ? "I could not find enough problem details to continue. Paste the full statement with at least one example."
+        : e.message?.includes('provider')
+        ? "The AI provider could not parse this problem. Check your provider settings or API key, then try again."
+        : "Problem parsing failed. Paste the full problem text with examples and constraints, then try again.";
+      setParseError(errorMsg);
     } finally {
       setParsing(false);
     }
@@ -96,8 +130,20 @@ export const ProblemInputPanel: React.FC = () => {
           )}
         </button>
 
+        {(isParsing || parseError) && (
+          <div className={cn("flex items-center justify-between gap-3 px-4 py-3 rounded-xl border", confidenceClass)}>
+            <div className="flex items-center gap-2">
+              {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertCircle className="w-4 h-4" />}
+              <span className="text-xs font-bold">
+                {isParsing ? 'Parsing problem details...' : `Parsing confidence: ${confidenceLabel}`}
+              </span>
+            </div>
+            <span className="text-[10px] font-mono">{Math.round(parseConfidence * 100)}%</span>
+          </div>
+        )}
+
         <p className="text-center text-[10px] text-slate-600 uppercase tracking-widest font-bold">
-           ⌘ + Enter to quick load
+           Cmd + Enter to quick load
         </p>
 
         {parseError && (

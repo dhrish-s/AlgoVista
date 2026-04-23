@@ -15,10 +15,13 @@ export class GeminiProvider implements AIProvider {
       model: options?.model || "gemini-3-flash-preview",
       contents: `Parse this LeetCode problem into structured JSON. 
       If the input is a URL, use your internal knowledge of the problem. 
+      Set parsingConfidence from 0 to 1 based on how complete and specific the input is.
+      Set requiresUserConfirmation to true when the title, statement, examples, or constraints are inferred from sparse input.
       CRITICAL: You MUST generate at least 2 distinct approaches (e.g., Brute Force and Optimal) in the 'approaches' field. 
       Each approach must have a clear 'name', 'complexity' (time/space), and 'explanation'.
       \n\nInput: ${input}`,
       config: {
+        abortSignal: options?.signal,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -37,6 +40,8 @@ export class GeminiProvider implements AIProvider {
                 }
               }
             },
+            parsingConfidence: { type: Type.NUMBER },
+            requiresUserConfirmation: { type: Type.BOOLEAN },
             constraints: { type: Type.ARRAY, items: { type: Type.STRING } },
             starterCode: { type: Type.STRING },
             approaches: {
@@ -61,7 +66,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    }, { signal: options?.signal });
+    });
 
     const data = JSON.parse(response.text || '{}');
     return { 
@@ -69,7 +74,8 @@ export class GeminiProvider implements AIProvider {
         ...data,
         id: Math.random().toString(36).substr(2, 9),
         source: 'mixed',
-        parsingConfidence: 1,
+        parsingConfidence: typeof data.parsingConfidence === 'number' ? data.parsingConfidence : 1,
+        requiresUserConfirmation: Boolean(data.requiresUserConfirmation),
         inferredPatterns: []
       } 
     };
@@ -80,6 +86,7 @@ export class GeminiProvider implements AIProvider {
       model: options?.model || "gemini-3-flash-preview",
       contents: `Problem: ${problem.title}\nUser Reasoning: ${reasoning}\n\nEvaluate if this approach is correct and optimal.`,
       config: {
+        abortSignal: options?.signal,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -91,7 +98,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    }, { signal: options?.signal });
+    });
 
     return { data: JSON.parse(response.text || '{}') };
   }
@@ -101,6 +108,7 @@ export class GeminiProvider implements AIProvider {
       model: options?.model || "gemini-3-flash-preview",
       contents: `Provide hints for this problem and code: ${problem.title}\nCode:\n${userCode}`,
       config: {
+        abortSignal: options?.signal,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -110,7 +118,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    }, { signal: options?.signal });
+    });
 
     return { data: JSON.parse(response.text || '{}') };
   }
@@ -120,6 +128,7 @@ export class GeminiProvider implements AIProvider {
       model: options?.model || "gemini-3-flash-preview",
       contents: `Explain this code for problem ${problem.title}:\n${code}`,
       config: {
+        abortSignal: options?.signal,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -130,7 +139,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    }, { signal: options?.signal });
+    });
 
     if (options?.signal?.aborted) {
       throw new Error('AbortError');
@@ -163,6 +172,7 @@ export class GeminiProvider implements AIProvider {
       model: options?.model || "gemini-3-flash-preview",
       contents: prompt,
       config: {
+        abortSignal: options?.signal,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -188,7 +198,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    }, { signal: options?.signal });
+    });
 
     return { data: JSON.parse(response.text || '[]') };
   }
@@ -215,8 +225,11 @@ New User Input: ${userMessage}`;
 
     const response = await this.ai.models.generateContent({
       model: options?.model || "gemini-3-flash-preview",
-      contents: prompt
-    }, { signal: options?.signal });
+      contents: prompt,
+      config: {
+        abortSignal: options?.signal
+      }
+    });
 
     return {
       data: {

@@ -7,11 +7,28 @@ import { cn } from '../lib/utils';
 import { getAIManager } from '../services/ai/AIProviderManager';
 
 export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { aiSettings, setAISettings } = useStore();
+  const { aiSettings, setAISettings, currentProvider, providerStatus, providerMessage, setProviderStatus } = useStore();
 
   const handleProviderChange = (providerId: AIProviderID) => {
+    const provider = providers.find((p) => p.id === providerId);
+    if (provider?.disabled) {
+      setProviderStatus('unavailable', `${provider.name} is not available in this build. Gemini remains active.`);
+      return;
+    }
     setAISettings({ defaultProvider: providerId });
     getAIManager({ ...aiSettings, defaultProvider: providerId });
+  };
+
+  const handleFallbackChange = (providerId: AIProviderID) => {
+    const provider = providers.find((p) => p.id === providerId);
+    if (provider?.disabled) {
+      setProviderStatus('unavailable', `${provider.name} fallback is not available yet. Gemini remains the safe fallback.`);
+      setAISettings({ fallbackProvider: 'gemini' });
+      getAIManager({ ...aiSettings, fallbackProvider: 'gemini' });
+      return;
+    }
+    setAISettings({ fallbackProvider: providerId });
+    getAIManager({ ...aiSettings, fallbackProvider: providerId });
   };
 
   const providers: { id: AIProviderID; name: string; desc: string; icon: any; disabled?: boolean }[] = [
@@ -44,7 +61,7 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                  {providers.map((p) => (
                    <button
                      key={p.id}
-                     onClick={() => !p.disabled && handleProviderChange(p.id)}
+                     onClick={() => handleProviderChange(p.id)}
                      disabled={p.disabled}
                      className={cn(
                        "flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group",
@@ -62,7 +79,9 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                       </div>
                       <div className="flex flex-col">
                          <span className="text-sm font-bold">{p.name}</span>
-                         <span className="text-[10px] opacity-60 font-mono tracking-tight">{p.desc}</span>
+                         <span className="text-[10px] opacity-60 font-mono tracking-tight">
+                          {p.disabled ? `${p.desc} - unavailable` : p.desc}
+                         </span>
                       </div>
                    </button>
                  ))}
@@ -76,12 +95,12 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                     <span className="text-[10px] font-bold text-slate-500 uppercase">Fallback Engine</span>
                     <select 
                       value={aiSettings.fallbackProvider}
-                      onChange={(e) => setAISettings({ fallbackProvider: e.target.value as AIProviderID })}
+                      onChange={(e) => handleFallbackChange(e.target.value as AIProviderID)}
                       className="bg-transparent text-xs text-indigo-400 font-bold focus:outline-none cursor-pointer"
                     >
                        <option value="gemini">Gemini</option>
-                       <option value="openai">OpenAI</option>
-                       <option value="claude">Claude</option>
+                       <option value="openai" disabled>OpenAI (Unavailable)</option>
+                       <option value="claude" disabled>Claude (Unavailable)</option>
                     </select>
                  </div>
                  <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-2xl flex flex-col gap-2 opacity-50 cursor-not-allowed">
@@ -90,6 +109,28 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                     </span>
                     <span className="text-xs text-slate-600 font-bold">Enabled (Auto)</span>
                  </div>
+              </div>
+           </section>
+
+           <section>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Provider Status</h3>
+              <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-2xl flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Current Provider</span>
+                  <span className="text-xs text-indigo-400 font-bold uppercase">{currentProvider}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Last Action</span>
+                  <span className={cn(
+                    "text-xs font-bold uppercase",
+                    providerStatus === 'fallback' ? "text-amber-400" : providerStatus === 'failed' || providerStatus === 'unavailable' ? "text-rose-400" : "text-emerald-400"
+                  )}>
+                    {providerStatus}
+                  </span>
+                </div>
+                {providerMessage && (
+                  <p className="text-[10px] text-slate-500 leading-relaxed">{providerMessage}</p>
+                )}
               </div>
            </section>
 

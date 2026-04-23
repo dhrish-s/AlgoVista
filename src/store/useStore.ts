@@ -11,6 +11,7 @@ interface AppState {
   // Loading State
   isParsing: boolean;
   parseError: string | null;
+  parseConfidence: number; // 0 to 1
   
   // Session State
   currentProblem: StructuredProblem | null;
@@ -18,6 +19,10 @@ interface AppState {
   currentStepIndex: number;
   isGeneratingSteps: boolean;
   stepGenerationError: string | null;
+  stepTruncated: boolean;
+  currentProvider: string;
+  providerStatus: 'success' | 'failed' | 'fallback' | 'unavailable' | 'idle';
+  providerMessage: string | null;
   
   userCode: string;
   userReasoning: string;
@@ -36,11 +41,14 @@ interface AppState {
   // Actions
   setParsing: (loading: boolean) => void;
   setParseError: (error: string | null) => void;
+  setParseConfidence: (confidence: number) => void;
   setCurrentProblem: (problem: StructuredProblem | null) => void;
   setUserCode: (code: string) => void;
   setSteps: (steps: ExecutionStep[]) => void;
   setStepIndex: (index: number | ((prev: number) => number)) => void;
-  setStepGenerationState: (loading: boolean, error: string | null) => void;
+  setStepGenerationState: (loading: boolean, error: string | null, truncated?: boolean) => void;
+  setCurrentProvider: (provider: string) => void;
+  setProviderStatus: (status: AppState['providerStatus'], message?: string | null) => void;
   setUserReasoning: (text: string) => void;
   setPlaybackSpeed: (speed: number) => void;
   setIsPlaying: (playing: boolean) => void;
@@ -73,12 +81,17 @@ export const useStore = create<AppState>()(
 
       isParsing: false,
       parseError: null,
+      parseConfidence: 0,
       
       currentProblem: null,
       currentSteps: [],
       currentStepIndex: -1,
       isGeneratingSteps: false,
       stepGenerationError: null,
+      stepTruncated: false,
+      currentProvider: 'gemini',
+      providerStatus: 'idle',
+      providerMessage: null,
       
       userCode: '',
       userReasoning: '',
@@ -98,6 +111,7 @@ export const useStore = create<AppState>()(
 
       setParsing: (loading) => set({ isParsing: loading }),
       setParseError: (error) => set({ parseError: error }),
+      setParseConfidence: (confidence) => set({ parseConfidence: Math.max(0, Math.min(1, confidence)) }),
       
       setCurrentProblem: (problem) => set({ 
         currentProblem: problem,
@@ -107,7 +121,9 @@ export const useStore = create<AppState>()(
         userReasoning: '',
         unlockedEditor: false,
         parseError: null,
-        stepGenerationError: null
+        parseConfidence: problem?.parsingConfidence || 1,
+        stepGenerationError: null,
+        stepTruncated: false
       }),
 
       setUserCode: (code) => set({ userCode: code }),
@@ -116,9 +132,15 @@ export const useStore = create<AppState>()(
         currentStepIndex: typeof index === 'function' ? index(state.currentStepIndex) : index 
       })),
       
-      setStepGenerationState: (loading, error) => set({ 
+      setStepGenerationState: (loading, error, truncated = false) => set({ 
         isGeneratingSteps: loading, 
-        stepGenerationError: error 
+        stepGenerationError: error,
+        stepTruncated: truncated
+      }),
+      setCurrentProvider: (provider) => set({ currentProvider: provider }),
+      setProviderStatus: (status, message = null) => set({
+        providerStatus: status,
+        providerMessage: message
       }),
 
       setUserReasoning: (text) => set({ userReasoning: text }),
@@ -144,7 +166,9 @@ export const useStore = create<AppState>()(
         userReasoning: '',
         unlockedEditor: false,
         parseError: null,
-        stepGenerationError: null
+        parseConfidence: 0,
+        stepGenerationError: null,
+        stepTruncated: false
       }),
     }),
     {
@@ -158,6 +182,7 @@ export const useStore = create<AppState>()(
         aiSettings: state.aiSettings,
         panelLayout: state.panelLayout,
         userProgress: state.userProgress,
+        currentProvider: state.currentProvider,
       }),
     }
   )

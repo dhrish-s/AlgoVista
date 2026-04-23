@@ -8,6 +8,18 @@ interface StepValidationResult {
   error?: string;
 }
 
+export interface GeneratedExecutionSteps extends Array<ExecutionStep> {
+  generationFeedback?: {
+    truncated: boolean;
+    message?: string;
+  };
+  providerMeta?: {
+    provider: string;
+    status: string;
+    message?: string;
+  };
+}
+
 export class DynamicStepGenerator {
   private static readonly MAX_STEPS = 50;
   private static readonly VALID_OPERATION_TYPES = new Set<OperationType>([
@@ -136,7 +148,7 @@ export class DynamicStepGenerator {
       throw err;
     }
 
-    const { data: rawSteps } = await aiManager.generateSteps(problem, approach.explanation, testCase, { task: 'steps', signal });
+    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, approach.explanation, testCase, { task: 'steps', signal });
 
     // Ignore if a newer request started
     if (DynamicStepGenerator.latestRequestMap[key] !== reqId) {
@@ -155,7 +167,13 @@ export class DynamicStepGenerator {
       console.warn(`Step trace truncated: ${validation.error}`);
     }
 
-    return validation.steps;
+    const steps = validation.steps as GeneratedExecutionSteps;
+    steps.generationFeedback = {
+      truncated: validation.isTruncated,
+      message: validation.error
+    };
+    steps.providerMeta = meta;
+    return steps;
   }
 
   static async generateFromUserCode(
@@ -177,7 +195,7 @@ export class DynamicStepGenerator {
       throw err;
     }
 
-    const { data: rawSteps } = await aiManager.generateSteps(problem, userCode, testCase, { task: 'steps', signal });
+    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, userCode, testCase, { task: 'steps', signal });
 
     if (DynamicStepGenerator.latestRequestMap[key] !== reqId) {
       const err: any = new Error('AbortError');
@@ -195,6 +213,12 @@ export class DynamicStepGenerator {
       console.warn(`Step trace truncated: ${validation.error}`);
     }
 
-    return validation.steps;
+    const steps = validation.steps as GeneratedExecutionSteps;
+    steps.generationFeedback = {
+      truncated: validation.isTruncated,
+      message: validation.error
+    };
+    steps.providerMeta = meta;
+    return steps;
   }
 }
