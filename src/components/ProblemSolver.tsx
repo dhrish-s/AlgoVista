@@ -13,6 +13,24 @@ import { Group, Panel, Separator } from 'react-resizable-panels';
 import { MiniExecutionWindow } from './MiniExecutionWindow';
 import { VariableStatePanel } from './VariableStatePanel';
 
+const getSafeApproaches = (approaches?: ApproachOption[]): ApproachOption[] => {
+  if (!Array.isArray(approaches)) return [];
+
+  return approaches
+    .filter((approach): approach is ApproachOption => Boolean(approach && typeof approach === 'object'))
+    .map((approach, index) => ({
+      ...approach,
+      id: approach.id || `approach-${index}`,
+      name: approach.name || `Approach ${index + 1}`,
+      explanation: approach.explanation || 'No explanation available yet.',
+      complexity: {
+        time: approach.complexity?.time || 'Unknown',
+        space: approach.complexity?.space || 'Unknown'
+      },
+      isOptimal: Boolean(approach.isOptimal)
+    }));
+};
+
 export const ProblemSolver: React.FC = () => {
   const { 
     currentProblem, 
@@ -49,8 +67,9 @@ export const ProblemSolver: React.FC = () => {
 
   // Auto-select first approach when problem loads
   useEffect(() => {
-    if (currentProblem?.approaches && currentProblem.approaches.length > 0) {
-      setSelectedApproach(currentProblem.approaches[0]);
+    const safeApproaches = getSafeApproaches(currentProblem?.approaches);
+    if (safeApproaches.length > 0) {
+      setSelectedApproach(safeApproaches[0]);
     } else {
       setSelectedApproach(null);
     }
@@ -76,6 +95,11 @@ export const ProblemSolver: React.FC = () => {
   }, [isPlaying, currentSteps.length, playbackSpeed]);
 
   if (!currentProblem) return null;
+
+  const safeApproaches = getSafeApproaches(currentProblem.approaches);
+  const safeProvider = currentProvider || 'unknown';
+  const safeStatus = providerStatus || 'idle';
+  const safeProviderMessage = providerMessage || '';
 
   const handleGenerateVisualization = async (useUserCode: boolean = false) => {
     if ((!selectedApproach && !useUserCode)) return;
@@ -182,13 +206,13 @@ export const ProblemSolver: React.FC = () => {
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
               <span className="text-slate-500">AI Provider</span>
               <span className={cn(
-                providerStatus === 'fallback' ? "text-amber-400" : providerStatus === 'failed' || providerStatus === 'unavailable' ? "text-rose-400" : "text-indigo-400"
+                safeStatus === 'fallback' ? "text-amber-400" : safeStatus === 'failed' || safeStatus === 'unavailable' ? "text-rose-400" : "text-indigo-400"
               )}>
-                {currentProvider} / {providerStatus}
+                {safeProvider} / {safeStatus}
               </span>
             </div>
-            {providerMessage && (
-              <p className="text-[10px] text-slate-500 leading-relaxed">{providerMessage}</p>
+            {safeProviderMessage && (
+              <p className="text-[10px] text-slate-500 leading-relaxed">{safeProviderMessage}</p>
             )}
           </div>
 
@@ -199,8 +223,8 @@ export const ProblemSolver: React.FC = () => {
                  1. Select Approach
                </h3>
                <div className="grid gap-2">
-                 {currentProblem.approaches && currentProblem.approaches.length > 0 ? (
-                   currentProblem.approaches.map((app) => (
+                 {safeApproaches.length > 0 ? (
+                   safeApproaches.map((app) => (
                      <button
                        key={app.id}
                        onClick={() => setSelectedApproach(app)}
@@ -240,7 +264,7 @@ export const ProblemSolver: React.FC = () => {
                />
                <button
                  onClick={unlockEditor}
-                 disabled={(!selectedApproach && (currentProblem.approaches?.length || 0) > 0) || userReasoning.length < 15}
+                 disabled={(!selectedApproach && safeApproaches.length > 0) || userReasoning.length < 15}
                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-20 text-white rounded-xl text-[10px] font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
                >
                   VALIDATE INTUITION

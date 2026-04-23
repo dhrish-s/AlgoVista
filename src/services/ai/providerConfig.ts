@@ -7,8 +7,9 @@ export interface ProviderAvailability {
 }
 
 const envValue = (key: string): string => {
-  const env = (process.env as Record<string, string | undefined>) || {};
-  return env[key]?.trim() || '';
+  const viteEnv = ((import.meta as any).env || {}) as Record<string, string | undefined>;
+  const processEnv = (typeof process !== 'undefined' ? process.env : {}) as Record<string, string | undefined>;
+  return (viteEnv[key] || processEnv[key] || '').trim();
 };
 
 export const getProviderApiKey = (providerId: AIProviderID): string => {
@@ -33,7 +34,7 @@ export const getDefaultFallbackProvider = (): AIProviderID => {
 export const getDefaultModelNames = (): Record<AIProviderID, string> => ({
   gemini: envValue('VITE_GEMINI_MODEL') || 'gemini-3-flash-preview',
   openai: envValue('VITE_OPENAI_MODEL') || 'gpt-4o-mini',
-  claude: envValue('VITE_CLAUDE_MODEL') || 'claude-3-5-haiku-latest'
+  claude: envValue('VITE_CLAUDE_MODEL') || 'claude-sonnet-4-20250514'
 });
 
 export const getProviderAvailability = (providerId: AIProviderID): ProviderAvailability => {

@@ -168,31 +168,64 @@ export class ClaudeProvider implements AIProvider {
 
   private async requestText(system: string, userContent: string, options?: AIRequestOptions): Promise<any> {
     assertProviderAvailable(this.id);
+    const url = 'https://api.anthropic.com/v1/messages';
+    const apiKey = getProviderApiKey(this.id);
+    const model = options?.model || 'claude-sonnet-4-20250514';
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    };
+    const body = {
+      model,
+      max_tokens: 4096,
+      temperature: 0.2,
+      system: system || undefined,
+      messages: [{ role: 'user', content: userContent }]
+    };
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    console.debug('[ClaudeProvider] request', {
+      keyPresent: Boolean(apiKey),
+      model,
+      url,
       method: 'POST',
-      signal: options?.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': getProviderApiKey(this.id),
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: options?.model || 'claude-3-5-haiku-latest',
-        max_tokens: 4096,
-        temperature: 0.2,
-        system,
-        messages: [{ role: 'user', content: userContent }]
-      })
+      xApiKeyHeaderAttached: Boolean(headers['x-api-key'])
     });
 
-    if (options?.signal?.aborted) throw asAbortError();
-    if (!response.ok) {
-      throw new Error(this.safeHttpError(response.status));
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        signal: options?.signal,
+        headers,
+        body: JSON.stringify(body)
+      });
+    } catch (error: any) {
+      if (options?.signal?.aborted || error.name === 'AbortError') throw asAbortError();
+      console.debug('[ClaudeProvider] network error', {
+        keyPresent: Boolean(apiKey),
+        model,
+        url,
+        method: 'POST',
+        xApiKeyHeaderAttached: Boolean(headers['x-api-key']),
+        error: error?.message || 'Fetch failed'
+      });
+      throw new Error('Claude browser-direct request failed. A backend proxy may be required if the browser blocks direct Anthropic access.');
     }
 
-    const json = await response.json();
+    if (options?.signal?.aborted) throw asAbortError();
+    const bodyText = await response.text();
+    console.debug('[ClaudeProvider] response', {
+      status: response.status,
+      bodyText
+    });
+
+    if (!response.ok) {
+      throw new Error(this.safeHttpError(response.status, bodyText));
+    }
+
+    const json = JSON.parse(bodyText);
     const content = json?.content?.map((part: any) => part?.type === 'text' ? part.text : '').join('').trim();
     if (!content) {
       throw new Error('Claude returned an empty response.');
@@ -266,8 +299,9 @@ New user message: ${userMessage}`,
     };
   }
 
-  private safeHttpError(status: number): string {
+  private safeHttpError(status: number, bodyText: string): string {
     if (status === 401 || status === 403) return 'Claude authentication failed. Check the API key.';
+    if (status === 404) return `Claude Messages API returned 404. The endpoint is correct; check browser-direct access, API key permissions, and the configured model. Response body: ${bodyText}`;
     if (status === 429) return 'Claude rate limit reached. Try again later or use fallback.';
     if (status >= 500) return 'Claude service is temporarily unavailable.';
     return 'Claude request failed.';

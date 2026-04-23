@@ -5,13 +5,16 @@ import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider, g
 
 export class AIProviderManager {
   private providers: Map<AIProviderID, AIProvider> = new Map();
+  private providerFactories: Record<AIProviderID, () => AIProvider>;
   private settings: AIProviderSettings;
 
   constructor(settings: AIProviderSettings) {
     this.settings = settings;
-    this.providers.set('gemini', new GeminiProvider());
-    this.providers.set('openai', new OpenAIProvider());
-    this.providers.set('claude', new ClaudeProvider());
+    this.providerFactories = {
+      gemini: () => new GeminiProvider(),
+      openai: () => new OpenAIProvider(),
+      claude: () => new ClaudeProvider()
+    };
   }
 
   updateSettings(settings: AIProviderSettings) {
@@ -27,6 +30,18 @@ export class AIProviderManager {
 
   private isProviderUnavailable(providerId: AIProviderID): boolean {
     return !getProviderAvailability(providerId).available;
+  }
+
+  private getOrCreateProvider(providerId: AIProviderID): AIProvider | null {
+    const existing = this.providers.get(providerId);
+    if (existing) return existing;
+
+    const factory = this.providerFactories[providerId];
+    if (!factory) return null;
+
+    const provider = factory();
+    this.providers.set(providerId, provider);
+    return provider;
   }
 
   private getFallbackChain(primaryId: AIProviderID): AIProviderID[] {
@@ -73,14 +88,14 @@ export class AIProviderManager {
     let lastError: any = null;
 
     for (const providerId of chain) {
-      const provider = this.providers.get(providerId);
-      if (!provider) continue;
-
       if (this.isProviderUnavailable(providerId)) {
         const availability = getProviderAvailability(providerId);
         lastError = new Error(`${providerId} provider is unavailable: ${availability.reason}`);
         continue;
       }
+
+      const provider = this.getOrCreateProvider(providerId);
+      if (!provider) continue;
 
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
@@ -129,6 +144,12 @@ export class AIProviderManager {
     const raw = String(error?.message || '').toLowerCase();
     if (raw.includes('api key') || raw.includes('401') || raw.includes('403') || raw.includes('unavailable')) {
       return `${providerId} provider is unavailable. Check the API key or switch to an available provider.`;
+    }
+    if (raw.includes('messages api returned 404')) {
+      return 'Claude Messages API returned 404. The endpoint is correct, so check that browser-direct access is allowed and the configured Claude model is available for your key.';
+    }
+    if (raw.includes('browser-direct') || raw.includes('failed to fetch')) {
+      return `${providerId} request could not complete from the browser. Use a backend proxy if direct browser access is blocked.`;
     }
     if (raw.includes('not implemented') || raw.includes('not yet configured')) {
       return `${providerId} provider is not ready yet. Gemini is the supported provider for this build.`;
