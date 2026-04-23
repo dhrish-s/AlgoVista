@@ -8,7 +8,17 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env': JSON.stringify({
+        GEMINI_API_KEY: env.GEMINI_API_KEY,
+        VITE_GEMINI_API_KEY: env.VITE_GEMINI_API_KEY,
+        VITE_OPENAI_API_KEY: env.VITE_OPENAI_API_KEY,
+        VITE_CLAUDE_API_KEY: env.VITE_CLAUDE_API_KEY,
+        VITE_GEMINI_MODEL: env.VITE_GEMINI_MODEL,
+        VITE_OPENAI_MODEL: env.VITE_OPENAI_MODEL,
+        VITE_CLAUDE_MODEL: env.VITE_CLAUDE_MODEL,
+        VITE_AI_PROVIDER: env.VITE_AI_PROVIDER,
+        VITE_FALLBACK_AI_PROVIDER: env.VITE_FALLBACK_AI_PROVIDER,
+      }),
     },
     resolve: {
       alias: {

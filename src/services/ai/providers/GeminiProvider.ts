@@ -1,18 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIProvider, AIProviderID, AIResponse, ReasoningEvaluation, HintGeneration, CodeExplanation, CoachMessage, AIRequestOptions } from '../types';
 import { StructuredProblem, ExecutionStep } from '../../../types';
+import { getDefaultModelNames, getProviderApiKey } from '../providerConfig';
 
 export class GeminiProvider implements AIProvider {
   id: AIProviderID = 'gemini';
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    this.ai = new GoogleGenAI({ apiKey: getProviderApiKey('gemini') });
   }
 
   async parseProblem(input: string, options?: AIRequestOptions): Promise<AIResponse<StructuredProblem>> {
     const response = await this.ai.models.generateContent({
-      model: options?.model || "gemini-3-flash-preview",
+      model: options?.model || getDefaultModelNames().gemini,
       contents: `Parse this LeetCode problem into structured JSON. 
       If the input is a URL, use your internal knowledge of the problem. 
       Set parsingConfidence from 0 to 1 based on how complete and specific the input is.
@@ -83,7 +84,7 @@ export class GeminiProvider implements AIProvider {
 
   async evaluateReasoning(problem: StructuredProblem, reasoning: string, options?: AIRequestOptions): Promise<AIResponse<ReasoningEvaluation>> {
     const response = await this.ai.models.generateContent({
-      model: options?.model || "gemini-3-flash-preview",
+      model: options?.model || getDefaultModelNames().gemini,
       contents: `Problem: ${problem.title}\nUser Reasoning: ${reasoning}\n\nEvaluate if this approach is correct and optimal.`,
       config: {
         abortSignal: options?.signal,
@@ -105,7 +106,7 @@ export class GeminiProvider implements AIProvider {
 
   async generateHints(problem: StructuredProblem, userCode: string, options?: AIRequestOptions): Promise<AIResponse<HintGeneration>> {
     const response = await this.ai.models.generateContent({
-      model: options?.model || "gemini-3-flash-preview",
+      model: options?.model || getDefaultModelNames().gemini,
       contents: `Provide hints for this problem and code: ${problem.title}\nCode:\n${userCode}`,
       config: {
         abortSignal: options?.signal,
@@ -125,7 +126,7 @@ export class GeminiProvider implements AIProvider {
 
   async explainCode(problem: StructuredProblem, code: string, options?: AIRequestOptions): Promise<AIResponse<CodeExplanation>> {
     const response = await this.ai.models.generateContent({
-      model: options?.model || "gemini-3-flash-preview",
+      model: options?.model || getDefaultModelNames().gemini,
       contents: `Explain this code for problem ${problem.title}:\n${code}`,
       config: {
         abortSignal: options?.signal,
@@ -169,7 +170,7 @@ export class GeminiProvider implements AIProvider {
         `;
 
     const response = await this.ai.models.generateContent({
-      model: options?.model || "gemini-3-flash-preview",
+      model: options?.model || getDefaultModelNames().gemini,
       contents: prompt,
       config: {
         abortSignal: options?.signal,
@@ -224,7 +225,7 @@ ${historyText}
 New User Input: ${userMessage}`;
 
     const response = await this.ai.models.generateContent({
-      model: options?.model || "gemini-3-flash-preview",
+      model: options?.model || getDefaultModelNames().gemini,
       contents: prompt,
       config: {
         abortSignal: options?.signal

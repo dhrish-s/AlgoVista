@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { StructuredProblem, UserState, ExecutionStep } from '../types';
 import { AIProviderID, AIProviderSettings } from '../services/ai/types';
+import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider } from '../services/ai/providerConfig';
 
 interface AppState {
   // AI Settings
@@ -62,17 +63,13 @@ export const useStore = create<AppState>()(
   persist(
     (set) => ({
       aiSettings: {
-        defaultProvider: 'gemini',
-        modelNames: {
-          gemini: 'gemini-3-flash-preview',
-          openai: 'gpt-4o',
-          claude: 'claude-3-5-sonnet-latest'
-        },
-        fallbackProvider: 'gemini',
+        defaultProvider: getDefaultProvider(),
+        modelNames: getDefaultModelNames(),
+        fallbackProvider: getDefaultFallbackProvider(),
         taskRouting: {
-          'parse': 'gemini',
-          'steps': 'gemini',
-          'coach': 'gemini'
+          'parse': getDefaultProvider(),
+          'steps': getDefaultProvider(),
+          'coach': getDefaultProvider()
         }
       },
       setAISettings: (settings) => set((state) => ({
@@ -89,7 +86,7 @@ export const useStore = create<AppState>()(
       isGeneratingSteps: false,
       stepGenerationError: null,
       stepTruncated: false,
-      currentProvider: 'gemini',
+      currentProvider: getDefaultProvider(),
       providerStatus: 'idle',
       providerMessage: null,
       

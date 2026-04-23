@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore';
 import { AIProviderID } from '../services/ai/types';
 import { cn } from '../lib/utils';
 import { getAIManager } from '../services/ai/AIProviderManager';
+import { getProviderAvailability } from '../services/ai/providerConfig';
 
 export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { aiSettings, setAISettings, currentProvider, providerStatus, providerMessage, setProviderStatus } = useStore();
@@ -12,17 +13,27 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   const handleProviderChange = (providerId: AIProviderID) => {
     const provider = providers.find((p) => p.id === providerId);
     if (provider?.disabled) {
-      setProviderStatus('unavailable', `${provider.name} is not available in this build. Gemini remains active.`);
+      setProviderStatus('unavailable', `${provider.name} is unavailable. ${provider.reason || 'Check its API key.'}`);
       return;
     }
-    setAISettings({ defaultProvider: providerId });
-    getAIManager({ ...aiSettings, defaultProvider: providerId });
+    const nextSettings = {
+      ...aiSettings,
+      defaultProvider: providerId,
+      taskRouting: {
+        ...aiSettings.taskRouting,
+        parse: providerId,
+        steps: providerId,
+        coach: providerId
+      }
+    };
+    setAISettings(nextSettings);
+    getAIManager(nextSettings);
   };
 
   const handleFallbackChange = (providerId: AIProviderID) => {
     const provider = providers.find((p) => p.id === providerId);
     if (provider?.disabled) {
-      setProviderStatus('unavailable', `${provider.name} fallback is not available yet. Gemini remains the safe fallback.`);
+      setProviderStatus('unavailable', `${provider.name} fallback is unavailable. ${provider.reason || 'Check its API key.'}`);
       setAISettings({ fallbackProvider: 'gemini' });
       getAIManager({ ...aiSettings, fallbackProvider: 'gemini' });
       return;
@@ -31,11 +42,20 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     getAIManager({ ...aiSettings, fallbackProvider: providerId });
   };
 
-  const providers: { id: AIProviderID; name: string; desc: string; icon: any; disabled?: boolean }[] = [
-    { id: 'gemini', name: 'Gemini', desc: 'Google DeepMind (Optimized)', icon: Zap },
-    { id: 'openai', name: 'OpenAI', desc: 'GPT-4o (Coming Soon)', icon: Cpu, disabled: true },
-    { id: 'claude', name: 'Claude', desc: 'Anthropic (Coming Soon)', icon: Shield, disabled: true },
+  const baseProviders: { id: AIProviderID; name: string; desc: string; icon: any }[] = [
+    { id: 'gemini', name: 'Gemini', desc: 'Google DeepMind', icon: Zap },
+    { id: 'openai', name: 'OpenAI', desc: 'Chat Completions', icon: Cpu },
+    { id: 'claude', name: 'Claude', desc: 'Messages API', icon: Shield },
   ];
+
+  const providers: { id: AIProviderID; name: string; desc: string; icon: any; disabled?: boolean; reason?: string }[] = baseProviders.map((provider) => {
+    const availability = getProviderAvailability(provider.id);
+    return {
+      ...provider,
+      disabled: !availability.available,
+      reason: availability.reason
+    };
+  });
 
   return (
     <motion.div
@@ -80,7 +100,7 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                       <div className="flex flex-col">
                          <span className="text-sm font-bold">{p.name}</span>
                          <span className="text-[10px] opacity-60 font-mono tracking-tight">
-                          {p.disabled ? `${p.desc} - unavailable` : p.desc}
+                          {p.disabled ? `${p.desc} - ${p.reason}` : `${p.desc} - available`}
                          </span>
                       </div>
                    </button>
@@ -98,9 +118,11 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                       onChange={(e) => handleFallbackChange(e.target.value as AIProviderID)}
                       className="bg-transparent text-xs text-indigo-400 font-bold focus:outline-none cursor-pointer"
                     >
-                       <option value="gemini">Gemini</option>
-                       <option value="openai" disabled>OpenAI (Unavailable)</option>
-                       <option value="claude" disabled>Claude (Unavailable)</option>
+                       {providers.map((p) => (
+                        <option key={p.id} value={p.id} disabled={p.disabled}>
+                          {p.name}{p.disabled ? ' (Unavailable)' : ''}
+                        </option>
+                       ))}
                     </select>
                  </div>
                  <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-2xl flex flex-col gap-2 opacity-50 cursor-not-allowed">

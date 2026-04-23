@@ -1,6 +1,7 @@
 import { AIProvider, AIProviderID, AIRequestOptions, AIProviderSettings, AIResponse } from './types';
 import { GeminiProvider } from './providers/GeminiProvider';
 import { OpenAIProvider, ClaudeProvider } from './providers/AlternativeProviders';
+import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider, getProviderAvailability } from './providerConfig';
 
 export class AIProviderManager {
   private providers: Map<AIProviderID, AIProvider> = new Map();
@@ -17,21 +18,6 @@ export class AIProviderManager {
     this.settings = settings;
   }
 
-  private getProvider(options?: AIRequestOptions): AIProvider {
-    const taskId = options?.task;
-    const requestedProviderId = options?.provider || 
-                              (taskId && this.settings.taskRouting?.[taskId]) || 
-                              this.settings.defaultProvider;
-
-    const provider = this.providers.get(requestedProviderId);
-    if (!provider) {
-      // Fallback logic
-      const fallbackId = this.settings.fallbackProvider || 'gemini';
-      return this.providers.get(fallbackId)!;
-    }
-    return provider;
-  }
-
   private getProviderId(options?: AIRequestOptions): AIProviderID {
     const taskId = options?.task;
     return options?.provider ||
@@ -40,9 +26,7 @@ export class AIProviderManager {
   }
 
   private isProviderUnavailable(providerId: AIProviderID): boolean {
-    if (providerId === 'openai' || providerId === 'claude') return true;
-    if (providerId === 'gemini') return !process.env.GEMINI_API_KEY;
-    return true;
+    return !getProviderAvailability(providerId).available;
   }
 
   private getFallbackChain(primaryId: AIProviderID): AIProviderID[] {
@@ -56,31 +40,31 @@ export class AIProviderManager {
   }
 
   async parseProblem(input: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider) => provider.parseProblem(input, options), options);
+    return this.executeWithRetry((provider, providerOptions) => provider.parseProblem(input, providerOptions), options);
   }
 
   async evaluateReasoning(problem: any, reasoning: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider) => provider.evaluateReasoning(problem, reasoning, options), options);
+    return this.executeWithRetry((provider, providerOptions) => provider.evaluateReasoning(problem, reasoning, providerOptions), options);
   }
 
   async generateHints(problem: any, userCode: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider) => provider.generateHints(problem, userCode, options), options);
+    return this.executeWithRetry((provider, providerOptions) => provider.generateHints(problem, userCode, providerOptions), options);
   }
 
   async explainCode(problem: any, code: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider) => provider.explainCode(problem, code, options), options);
+    return this.executeWithRetry((provider, providerOptions) => provider.explainCode(problem, code, providerOptions), options);
   }
 
   async generateSteps(problem: any, code: string, testCase: any, options?: AIRequestOptions) {
-     return this.executeWithRetry((provider) => provider.generateSteps(problem, code, testCase, options), options);
+     return this.executeWithRetry((provider, providerOptions) => provider.generateSteps(problem, code, testCase, providerOptions), options);
   }
 
   async coachMessage(problem: any, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider) => provider.coachMessage(problem, userMessage, chatHistory, userReasoning, options), options);
+    return this.executeWithRetry((provider, providerOptions) => provider.coachMessage(problem, userMessage, chatHistory, userReasoning, providerOptions), options);
   }
 
   private async executeWithRetry<T>(
-    task: (provider: AIProvider) => Promise<AIResponse<T>>,
+    task: (provider: AIProvider, options: AIRequestOptions) => Promise<AIResponse<T>>,
     options?: AIRequestOptions,
     retries: number = 1
   ): Promise<AIResponse<T>> {
@@ -93,13 +77,18 @@ export class AIProviderManager {
       if (!provider) continue;
 
       if (this.isProviderUnavailable(providerId)) {
-        lastError = new Error(`${providerId} provider is unavailable`);
+        const availability = getProviderAvailability(providerId);
+        lastError = new Error(`${providerId} provider is unavailable: ${availability.reason}`);
         continue;
       }
 
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-          const response = await task(provider);
+          const providerOptions: AIRequestOptions = {
+            ...options,
+            model: options?.model || this.settings.modelNames[provider.id]
+          };
+          const response = await task(provider, providerOptions);
           return {
             ...response,
             meta: {
@@ -154,13 +143,9 @@ let managerInstance: AIProviderManager | null = null;
 export const getAIManager = (settings?: AIProviderSettings) => {
   if (!managerInstance) {
     const defaultSettings: AIProviderSettings = settings || {
-      defaultProvider: 'gemini',
-      modelNames: {
-        gemini: 'gemini-3-flash-preview',
-        openai: 'gpt-4o',
-        claude: 'claude-3-5-sonnet-latest'
-      },
-      fallbackProvider: 'gemini',
+      defaultProvider: getDefaultProvider(),
+      modelNames: getDefaultModelNames(),
+      fallbackProvider: getDefaultFallbackProvider(),
       taskRouting: {}
     };
     managerInstance = new AIProviderManager(defaultSettings);
