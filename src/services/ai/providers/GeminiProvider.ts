@@ -141,18 +141,22 @@ export class GeminiProvider implements AIProvider {
 
   async generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>> {
     const isUserCode = code.length > 50; 
-    const MAX_STEPS = 30; // Safety limit
+    const MAX_STEPS = 50; // Safety limit; must align with DynamicStepGenerator.MAX_STEPS
     
     const prompt = isUserCode 
       ? `Generate a visualization trace for this USER CODE (maybe partial/broken) for problem "${problem.title}". 
          Input: ${JSON.stringify(testCase.input)}. 
          Code: \n${code}\n
          ONLY visualize their actual logic.
-         LIMIT the trace to a maximum of ${MAX_STEPS} logical steps to avoid overwhelming the system.
+         LIMIT the trace to EXACTLY ${MAX_STEPS} logical steps maximum. Do not exceed this.
+         Every step MUST have: id (string), line (number), explanation (string), operationType (string), variables (object), visualState (object).
+         Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `
       : `Generate a step-by-step execution trace for problem "${problem.title}" using approach "${code}". 
          Input: ${JSON.stringify(testCase.input)}.
-         LIMIT the trace to a maximum of ${MAX_STEPS} logical steps.
+         LIMIT the trace to EXACTLY ${MAX_STEPS} logical steps maximum. Do not exceed this.
+         Every step MUST have: id (string), line (number), explanation (string), operationType (string), variables (object), visualState (object).
+         Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `;
 
     const response = await this.ai.models.generateContent({
