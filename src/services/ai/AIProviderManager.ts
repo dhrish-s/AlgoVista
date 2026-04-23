@@ -33,33 +33,37 @@ export class AIProviderManager {
   }
 
   async parseProblem(input: string, options?: AIRequestOptions) {
-    return this.executeWithRetry(() => this.getProvider(options).parseProblem(input), options);
+    return this.executeWithRetry(() => this.getProvider(options).parseProblem(input, options), options);
   }
 
   async evaluateReasoning(problem: any, reasoning: string, options?: AIRequestOptions) {
-    return this.executeWithRetry(() => this.getProvider(options).evaluateReasoning(problem, reasoning), options);
+    return this.executeWithRetry(() => this.getProvider(options).evaluateReasoning(problem, reasoning, options), options);
   }
 
   async generateHints(problem: any, userCode: string, options?: AIRequestOptions) {
-    return this.executeWithRetry(() => this.getProvider(options).generateHints(problem, userCode), options);
+    return this.executeWithRetry(() => this.getProvider(options).generateHints(problem, userCode, options), options);
   }
 
   async explainCode(problem: any, code: string, options?: AIRequestOptions) {
-    return this.executeWithRetry(() => this.getProvider(options).explainCode(problem, code), options);
+    return this.executeWithRetry(() => this.getProvider(options).explainCode(problem, code, options), options);
   }
 
   async generateSteps(problem: any, code: string, testCase: any, options?: AIRequestOptions) {
-     return this.executeWithRetry(() => this.getProvider(options).generateSteps(problem, code, testCase), options);
+     return this.executeWithRetry(() => this.getProvider(options).generateSteps(problem, code, testCase, options), options);
   }
 
   async coachMessage(problem: any, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions) {
-    return this.executeWithRetry(() => this.getProvider(options).coachMessage(problem, userMessage, chatHistory, userReasoning), options);
+    return this.executeWithRetry(() => this.getProvider(options).coachMessage(problem, userMessage, chatHistory, userReasoning, options), options);
   }
 
   private async executeWithRetry<T>(task: () => Promise<T>, options?: AIRequestOptions, retries: number = 1): Promise<T> {
     try {
       return await task();
     } catch (error) {
+      if (options?.signal?.aborted) {
+        throw new Error('Request was cancelled');
+      }
+      
       if (retries > 0) {
         console.warn(`AI Provider execution failed, retrying...`, error);
         return this.executeWithRetry(task, options, retries - 1);

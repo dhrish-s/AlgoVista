@@ -16,6 +16,8 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const latestReqRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { userReasoning } = useStore();
 
@@ -39,19 +41,36 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
         throw new Error("AI Manager not initialized.");
       }
 
+      // Cancel any previous coach request and mark this as the latest
+      if (abortController) {
+        try { abortController.abort(); } catch {}
+      }
+      const controller = new AbortController();
+      setAbortController(controller);
+      const reqId = ++latestReqRef.current;
+
       const { data: coachResponse } = await aiManager.coachMessage(
         problem,
         input,
         newMsgs,
         userReasoning,
-        { task: 'coach' }
+        { task: 'coach', signal: controller.signal }
       );
+
+      // If a newer request was started, ignore this response
+      if (reqId !== latestReqRef.current) {
+        const err: any = new Error('AbortError');
+        err.name = 'AbortError';
+        throw err;
+      }
 
       setMessages(prev => [...prev, { 
         role: 'ai', 
         content: coachResponse.content || "I'm having trouble thinking today. Try again?" 
       }]);
     } catch (e) {
+      // Ignore cancellations and stale results
+      if ((e as any)?.name === 'AbortError' || (e as any)?.message?.toLowerCase().includes('cancel')) return;
       console.error('Coach message error:', e);
       setMessages(prev => [...prev, { 
         role: 'ai', 
@@ -61,6 +80,15 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
       setIsTyping(false);
     }
   };
+
+  // Cancel in-flight coach request when problem changes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        try { abortController.abort(); } catch {}
+      }
+    };
+  }, [problem.id]);
 
   return (
     <div className="flex flex-col h-full bg-slate-900/30">

@@ -61,11 +61,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
-
-    if (options?.signal?.aborted) {
-      throw new Error('AbortError');
-    }
+    }, { signal: options?.signal });
 
     const data = JSON.parse(response.text || '{}');
     return { 
@@ -95,11 +91,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
-
-    if (options?.signal?.aborted) {
-      throw new Error('AbortError');
-    }
+    }, { signal: options?.signal });
 
     return { data: JSON.parse(response.text || '{}') };
   }
@@ -118,11 +110,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
-
-    if (options?.signal?.aborted) {
-      throw new Error('AbortError');
-    }
+    }, { signal: options?.signal });
 
     return { data: JSON.parse(response.text || '{}') };
   }
@@ -142,7 +130,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
+    }, { signal: options?.signal });
 
     if (options?.signal?.aborted) {
       throw new Error('AbortError');
@@ -196,11 +184,7 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
-
-    if (options?.signal?.aborted) {
-      throw new Error('AbortError');
-    }
+    }, { signal: options?.signal });
 
     return { data: JSON.parse(response.text || '[]') };
   }
@@ -228,11 +212,7 @@ New User Input: ${userMessage}`;
     const response = await this.ai.models.generateContent({
       model: options?.model || "gemini-3-flash-preview",
       contents: prompt
-    });
-
-    if (options?.signal?.aborted) {
-      throw new Error('AbortError');
-    }
+    }, { signal: options?.signal });
 
     return {
       data: {
