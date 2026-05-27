@@ -44,7 +44,8 @@ export class ProblemLoaderService {
       throw err;
     }
 
-    const { data, meta } = await aiManager.parseProblem(text, { task: 'parse', signal });
+    const enrichedText = ProblemLoaderService.enrichInput(text, metadata);
+    const { data, meta } = await aiManager.parseProblem(enrichedText, { task: 'parse', signal });
 
     // If another parse started after this one, treat this result as stale.
     if (reqId !== ProblemLoaderService.latestParseRequest) {
@@ -77,6 +78,16 @@ export class ProblemLoaderService {
     } as StructuredProblem & { __providerMeta?: typeof meta };
 
     return parsedProblem;
+  }
+
+  private static enrichInput(text: string, metadata?: any): string {
+    if (metadata?.source === 'leetcode-link' && metadata?.slug) {
+      return `LeetCode problem "${metadata.slug}" (${text}).\nUse your knowledge to provide the complete problem title, statement, examples, constraints, and solution approaches.`;
+    }
+    if (metadata?.source === 'leetcode-number') {
+      return `LeetCode problem number ${text.trim()}.\nUse your knowledge to provide the complete problem title, statement, examples, constraints, and solution approaches.`;
+    }
+    return text;
   }
 
   private static getParseConfidence(problem: Partial<StructuredProblem>): number {

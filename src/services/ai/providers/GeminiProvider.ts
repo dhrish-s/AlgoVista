@@ -14,10 +14,10 @@ export class GeminiProvider implements AIProvider {
   async parseProblem(input: string, options?: AIRequestOptions): Promise<AIResponse<StructuredProblem>> {
     const response = await this.ai.models.generateContent({
       model: options?.model || getDefaultModelNames().gemini,
-      contents: `Parse this LeetCode problem into structured JSON. 
-      If the input is a URL, use your internal knowledge of the problem. 
-      Set parsingConfidence from 0 to 1 based on how complete and specific the input is.
-      Set requiresUserConfirmation to true when the title, statement, examples, or constraints are inferred from sparse input.
+      contents: `You are a LeetCode expert. Parse the given input into a structured JSON problem.
+      If the input is a LeetCode URL, slug, or number — you MUST use your training knowledge to recall and provide the complete problem: full statement, at least 2 examples with input/output, all constraints, and 2+ approaches. Do NOT leave statement, examples, or constraints empty for known LeetCode problems.
+      Set parsingConfidence from 0 to 1 based on how complete and specific your output is.
+      Set requiresUserConfirmation to true only when you genuinely cannot recall the problem details.
       CRITICAL: You MUST generate at least 2 distinct approaches (e.g., Brute Force and Optimal) in the 'approaches' field. 
       Each approach MUST include:
       - name (string)
