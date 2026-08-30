@@ -2,6 +2,7 @@ import { AIProvider, AIProviderID, AIRequestOptions, AIProviderSettings, AIRespo
 import { GeminiProvider } from './providers/GeminiProvider';
 import { OpenAIProvider, ClaudeProvider } from './providers/AlternativeProviders';
 import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider, getProviderAvailability } from './providerConfig';
+import { validateExecutionSteps } from '../ExecutionStepValidator';
 
 export class AIProviderManager {
   private providers: Map<AIProviderID, AIProvider> = new Map();
@@ -71,7 +72,14 @@ export class AIProviderManager {
   }
 
   async generateSteps(problem: any, code: string, testCase: any, options?: AIRequestOptions) {
-     return this.executeWithRetry((provider, providerOptions) => provider.generateSteps(problem, code, testCase, providerOptions), options);
+    return this.executeWithRetry(async (provider, providerOptions) => {
+      const response = await provider.generateSteps(problem, code, testCase, providerOptions);
+      const validation = validateExecutionSteps(response.data);
+      if (!validation.valid) {
+        throw new Error(`Invalid step trace: ${validation.error}`);
+      }
+      return response;
+    }, options);
   }
 
   async coachMessage(problem: any, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions) {

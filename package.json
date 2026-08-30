@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "tsx --test tests/ExecutionStepValidator.test.ts"
+    "test": "tsx --test tests/ExecutionStepValidator.test.ts tests/AIProviderManager.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
