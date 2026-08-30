@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { StructuredProblem, ApproachOption } from '../types';
@@ -63,7 +63,7 @@ export const ProblemSolver: React.FC = () => {
   } = useStore();
 
   const [selectedApproach, setSelectedApproach] = useState<ApproachOption | null>(null);
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const generationControllerRef = useRef<AbortController | null>(null);
 
   // Auto-select first approach when problem loads
   useEffect(() => {
@@ -74,6 +74,14 @@ export const ProblemSolver: React.FC = () => {
       setSelectedApproach(null);
     }
   }, [currentProblem?.id]);
+
+  useEffect(() => {
+    return () => {
+      generationControllerRef.current?.abort();
+      generationControllerRef.current = null;
+      setStepGenerationState(false, null, false);
+    };
+  }, [currentProblem?.id, setStepGenerationState]);
 
   // Playback logic
   useEffect(() => {
@@ -104,13 +112,10 @@ export const ProblemSolver: React.FC = () => {
   const handleGenerateVisualization = async (useUserCode: boolean = false) => {
     if ((!selectedApproach && !useUserCode)) return;
     
-    // Cancel existing
-    if (abortController) {
-      abortController.abort();
-    }
+    generationControllerRef.current?.abort();
     
     const newController = new AbortController();
-    setAbortController(newController);
+    generationControllerRef.current = newController;
 
     setStepGenerationState(true, null, false);
     try {
@@ -123,6 +128,10 @@ export const ProblemSolver: React.FC = () => {
         steps = await DynamicStepGenerator.generate(currentProblem, selectedApproach, testCase, newController.signal);
       } else {
         throw new Error("No approach selected.");
+      }
+
+      if (generationControllerRef.current !== newController || newController.signal.aborted) {
+        return;
       }
       
       const generationFeedback = (steps as any).generationFeedback;
@@ -139,6 +148,9 @@ export const ProblemSolver: React.FC = () => {
         Boolean(generationFeedback?.truncated)
       );
     } catch (e: any) {
+      if (generationControllerRef.current !== newController) {
+        return;
+      }
       if (e.name === 'AbortError' || e.message?.includes('abort')) {
         setStepGenerationState(false, null, false);
         return;
@@ -154,6 +166,10 @@ export const ProblemSolver: React.FC = () => {
         errorMsg = "The current AI provider could not generate a trace. Check provider settings or API key, then try again.";
       }
       setStepGenerationState(false, errorMsg);
+    } finally {
+      if (generationControllerRef.current === newController) {
+        generationControllerRef.current = null;
+      }
     }
   };
 
