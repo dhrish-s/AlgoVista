@@ -132,7 +132,6 @@ export const ProblemSolver: React.FC = () => {
         setProviderStatus(providerMeta.status, providerMeta.message);
       }
       setSteps(steps);
-      setStepIndex(0);
       setIsPlaying(true);
       setStepGenerationState(false, generationFeedback?.truncated
         ? "The trace was longer than the 50-step safety limit, so the visualization shows the first reliable portion. Try a smaller example input or simplify the code to see more detail."
