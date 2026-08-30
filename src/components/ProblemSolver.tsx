@@ -117,6 +117,8 @@ export const ProblemSolver: React.FC = () => {
     const newController = new AbortController();
     generationControllerRef.current = newController;
 
+    setIsPlaying(false);
+    setSteps([]);
     setStepGenerationState(true, null, false);
     try {
       const testCase = currentProblem.examples[0];
