@@ -18,7 +18,7 @@ export interface PatternSuggestion {
 }
 
 export interface VisualState {
-  array?: any[];
+  array?: unknown[];
   map?: Record<string, any>;
   stack?: any[];
   queue?: any[];

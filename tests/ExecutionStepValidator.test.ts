@@ -58,3 +58,20 @@ test('reports malformed steps retained alongside a usable partial trace', () => 
   assert.equal(result.rejectedStepCount, 1);
   assert.match(result.warning || '', /Step 1: missing or invalid id/);
 });
+
+test('normalizes array values, pointers, and highlighted indices', () => {
+  const step = createStep('scan', 'move-pointer');
+  const result = validateExecutionSteps([{
+    ...step,
+    visualState: {
+      nums: [3, { value: 1 }, 2],
+      pointers: { left: '0', right: 2, invalid: 'end' },
+      highlightedIndices: ['0', 2, 'right']
+    }
+  }]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps[0].visualState.array, [3, { value: 1 }, 2]);
+  assert.deepEqual(result.steps[0].visualState.indices, { left: 0, right: 2 });
+  assert.deepEqual(result.steps[0].visualState.highlights, [0, 2]);
+});

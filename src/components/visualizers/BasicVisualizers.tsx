@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
+import { formatVisualValue } from '../../lib/formatVisualValue';
 
 interface ArrayVisualizerProps {
-  data: any[];
-  highlights?: number[];
-  pointers?: Record<string, number>;
-  activeValue?: any;
+  data?: unknown;
+  highlights?: unknown;
+  pointers?: unknown;
+  activeValue?: unknown;
 }
 
 export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({ 
@@ -14,9 +15,15 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
   highlights = [], 
   pointers = {},
 }) => {
-  const safeData = data || [];
-  const safeHighlights = highlights || [];
-  const safePointers = pointers || {};
+  const safeData = Array.isArray(data) ? data : [];
+  const safeHighlights = Array.isArray(highlights)
+    ? highlights.filter((index): index is number => Number.isInteger(index))
+    : [];
+  const safePointers = pointers && typeof pointers === 'object' && !Array.isArray(pointers)
+    ? Object.fromEntries(
+        Object.entries(pointers).filter((entry): entry is [string, number] => Number.isInteger(entry[1]))
+      )
+    : {};
 
   if (safeData.length === 0) {
     return (
@@ -70,7 +77,7 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
                   !isHighlighted && "text-slate-300"
                 )}
               >
-                {item}
+                {formatVisualValue(item)}
               </motion.div>
 
               {/* Index Labels Below */}

@@ -44,7 +44,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
         <div className="w-full flex-shrink-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
            <ArrayVisualizer 
              data={visualState.array}
-             highlights={visualState.highlights as number[]}
+             highlights={visualState.highlights}
              pointers={visualState.indices}
            />
         </div>

@@ -1,4 +1,5 @@
 import { ExecutionStep, OperationType } from '../types';
+import { normalizeVisualState } from './VisualStateNormalizer';
 
 export interface StepValidationResult {
   valid: boolean;
@@ -88,7 +89,7 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
       explanation: rawStep.explanation.substring(0, 500),
       operationType: rawStep.operationType as OperationType,
       variables: rawStep.variables as Record<string, unknown>,
-      visualState: rawStep.visualState
+      visualState: normalizeVisualState(rawStep.visualState as Record<string, unknown>)
     });
   }
 

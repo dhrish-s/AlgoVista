@@ -1,0 +1,44 @@
+import { VisualState } from '../types';
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord => (
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+);
+
+const normalizeIndices = (value: unknown): Record<string, number> => {
+  if (!isRecord(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([name, index]) => [name, typeof index === 'number' ? index : Number(index)] as const)
+      .filter((entry): entry is [string, number] => Number.isInteger(entry[1]))
+  );
+};
+
+const normalizeHighlights = (value: unknown): number[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((index) => typeof index === 'number' ? index : Number(index))
+    .filter((index): index is number => Number.isInteger(index));
+};
+
+export const normalizeVisualState = (rawState: UnknownRecord): VisualState => {
+  const normalized = { ...rawState } as VisualState;
+  const arrayAliases = [rawState.array, rawState.nums, rawState.values];
+  const array = arrayAliases.find(Array.isArray);
+  const hasArrayField = ['array', 'nums', 'values'].some((key) => key in rawState);
+
+  if (array) {
+    normalized.array = [...array];
+    normalized.indices = normalizeIndices(rawState.indices ?? rawState.pointers);
+    normalized.highlights = normalizeHighlights(
+      rawState.highlights ?? rawState.highlightedIndices ?? rawState.highlighted
+    );
+  } else if (hasArrayField) {
+    delete normalized.array;
+  }
+
+  return normalized;
+};

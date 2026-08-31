@@ -166,12 +166,14 @@ export class GeminiProvider implements AIProvider {
          ONLY visualize their actual logic.
          LIMIT the trace to EXACTLY ${MAX_STEPS} logical steps maximum. Do not exceed this.
          Every step MUST have: id (string), line (number), explanation (string), operationType (string), variables (object), visualState (object).
+         For array algorithms, visualState MUST use array for values, indices for named numeric pointers, and highlights for numeric indices.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `
       : `Generate a step-by-step execution trace for problem "${problem.title}" using approach "${code}". 
          Input: ${JSON.stringify(testCase.input)}.
          LIMIT the trace to EXACTLY ${MAX_STEPS} logical steps maximum. Do not exceed this.
          Every step MUST have: id (string), line (number), explanation (string), operationType (string), variables (object), visualState (object).
+         For array algorithms, visualState MUST use array for values, indices for named numeric pointers, and highlights for numeric indices.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `;
 
