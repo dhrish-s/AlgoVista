@@ -170,6 +170,13 @@ export const ProblemSolver: React.FC = () => {
       } else if (e.message?.includes('provider')) {
         errorMsg = "The current AI provider could not generate a trace. Check provider settings or API key, then try again.";
       }
+      if (e.provider) {
+        setCurrentProvider(e.provider);
+      }
+      setProviderStatus(
+        e.status === 'unavailable' ? 'unavailable' : 'failed',
+        typeof e.message === 'string' && e.message.trim() ? e.message : errorMsg
+      );
       setStepGenerationState(false, errorMsg);
     } finally {
       if (generationControllerRef.current === newController) {
