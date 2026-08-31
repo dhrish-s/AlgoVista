@@ -144,11 +144,14 @@ export const ProblemSolver: React.FC = () => {
       }
       setSteps(steps);
       setIsPlaying(true);
-      setStepGenerationState(false, generationFeedback?.truncated
-        ? "The trace was longer than the 50-step safety limit, so the visualization shows the first reliable portion. Try a smaller example input or simplify the code to see more detail."
-        : null,
-        Boolean(generationFeedback?.truncated)
-      );
+      const rejectedStepCount = Number(generationFeedback?.rejectedStepCount || 0);
+      const traceIsLimited = Boolean(generationFeedback?.truncated || rejectedStepCount > 0);
+      const feedbackMessage = generationFeedback?.truncated
+        ? `The trace was longer than the 50-step safety limit, so the visualization shows the first reliable portion. Try a smaller example input or simplify the code to see more detail.${rejectedStepCount > 0 ? ` ${generationFeedback.message}` : ''}`
+        : rejectedStepCount > 0
+          ? `The provider returned ${rejectedStepCount} malformed execution ${rejectedStepCount === 1 ? 'step' : 'steps'}. AlgoVista skipped ${rejectedStepCount === 1 ? 'it' : 'them'} and is showing ${steps.length} valid ${steps.length === 1 ? 'step' : 'steps'}. ${generationFeedback.message}`
+          : null;
+      setStepGenerationState(false, feedbackMessage, traceIsLimited);
     } catch (e: any) {
       if (generationControllerRef.current !== newController) {
         return;
