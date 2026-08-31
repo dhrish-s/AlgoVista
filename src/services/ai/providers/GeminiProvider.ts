@@ -168,6 +168,7 @@ export class GeminiProvider implements AIProvider {
          Every step MUST have: id (string), line (number), explanation (string), operationType (string), variables (object), visualState (object).
          For array algorithms, visualState MUST use array for values, indices for named numeric pointers, and highlights for numeric indices.
          For hash-based algorithms, visualState MUST use map as an object of key-value pairs.
+         For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `
       : `Generate a step-by-step execution trace for problem "${problem.title}" using approach "${code}". 
@@ -176,6 +177,7 @@ export class GeminiProvider implements AIProvider {
          Every step MUST have: id (string), line (number), explanation (string), operationType (string), variables (object), visualState (object).
          For array algorithms, visualState MUST use array for values, indices for named numeric pointers, and highlights for numeric indices.
          For hash-based algorithms, visualState MUST use map as an object of key-value pairs.
+         For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `;
 

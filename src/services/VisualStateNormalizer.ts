@@ -36,6 +36,12 @@ const normalizeMap = (value: unknown): Record<string, unknown> | undefined => {
   return Object.fromEntries(entries.map(([key, mapValue]) => [String(key), mapValue]));
 };
 
+const normalizeStack = (value: unknown): unknown[] | undefined => {
+  if (Array.isArray(value)) return [...value];
+  if (isRecord(value) && Array.isArray(value.items)) return [...value.items];
+  return undefined;
+};
+
 export const normalizeVisualState = (rawState: UnknownRecord): VisualState => {
   const normalized = { ...rawState } as VisualState;
   const arrayAliases = [rawState.array, rawState.nums, rawState.values];
@@ -60,6 +66,16 @@ export const normalizeVisualState = (rawState: UnknownRecord): VisualState => {
     normalized.map = map;
   } else if (hasMapField) {
     delete normalized.map;
+  }
+
+  const stackAliases = [rawState.stack, rawState.callStack, rawState.call_stack, rawState.monotonicStack];
+  const stack = stackAliases.map(normalizeStack).find((candidate) => candidate !== undefined);
+  const hasStackField = ['stack', 'callStack', 'call_stack', 'monotonicStack'].some((key) => key in rawState);
+
+  if (stack) {
+    normalized.stack = stack;
+  } else if (hasStackField) {
+    delete normalized.stack;
   }
 
   return normalized;

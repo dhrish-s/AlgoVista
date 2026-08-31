@@ -91,3 +91,16 @@ test('normalizes hash map aliases and entry-pair arrays', () => {
     '2': { seen: true }
   });
 });
+
+test('normalizes stack aliases and item wrappers', () => {
+  const step = createStep('push', 'push-stack');
+  const result = validateExecutionSteps([{
+    ...step,
+    visualState: {
+      callStack: { items: ['main', { frame: 'scan' }] }
+    }
+  }]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps[0].visualState.stack, ['main', { frame: 'scan' }]);
+});

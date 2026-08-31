@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
+import { formatVisualValue } from '../../lib/formatVisualValue';
 
-export const StackVisualizer: React.FC<{ data: any[] }> = ({ data = [] }) => {
-  const safeData = data || [];
+export const StackVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
+  const safeData = Array.isArray(data) ? data : [];
   return (
     <div className="flex flex-col items-center gap-2 p-4 h-full">
       <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2 mb-2">
@@ -14,13 +15,13 @@ export const StackVisualizer: React.FC<{ data: any[] }> = ({ data = [] }) => {
         <AnimatePresence initial={false}>
           {safeData.map((item, idx) => (
             <motion.div
-              key={`${idx}-${item}`}
+              key={idx}
               initial={{ y: -50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ x: 50, opacity: 0 }}
               className="w-full py-2 bg-indigo-600 rounded border border-indigo-400 flex items-center justify-center text-white text-xs font-mono font-bold shadow-lg shadow-indigo-500/20"
             >
-              {item}
+              {formatVisualValue(item)}
             </motion.div>
           ))}
         </AnimatePresence>

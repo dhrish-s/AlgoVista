@@ -35,6 +35,7 @@ const STEP_INSTRUCTIONS = `Return only a JSON array of execution steps.
 Every step must include: id string, line number, explanation string, operationType string, variables object, visualState object.
 For array algorithms, visualState must use array for values, indices for named numeric pointers, and highlights for numeric indices.
 For hash-based algorithms, visualState must use map as an object of key-value pairs.
+For stack algorithms, visualState must use stack as an array ordered from bottom to top.
 Use no more than 50 logical steps. Do not include markdown.`;
 
 const COACH_INSTRUCTIONS = `You are AlgoVista's reasoning coach.
