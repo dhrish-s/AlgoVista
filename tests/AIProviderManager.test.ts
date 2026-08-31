@@ -90,3 +90,22 @@ test('accepts a valid three-step primary trace without falling back', async () =
   assert.equal(primary.getCalls(), 1);
   assert.equal(fallback.getCalls(), 0);
 });
+
+test('attributes a final error to the fallback provider that actually failed', async () => {
+  const primary = createProvider('openai', () => []);
+  const fallback = createProvider('claude', () => {
+    throw new Error('Claude request failed.');
+  });
+  const manager = createManager(primary.provider, fallback.provider);
+
+  await assert.rejects(
+    manager.generateSteps({}, '', {}, { task: 'steps' }),
+    (error: Error & { provider?: AIProviderID; requestedProvider?: AIProviderID; status?: string }) => {
+      assert.equal(error.provider, 'claude');
+      assert.equal(error.requestedProvider, 'openai');
+      assert.equal(error.status, 'unavailable');
+      assert.match(error.message, /claude provider/i);
+      return true;
+    }
+  );
+});

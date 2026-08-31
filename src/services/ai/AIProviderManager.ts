@@ -94,6 +94,7 @@ export class AIProviderManager {
     const primaryId = this.getProviderId(options);
     const chain = this.getFallbackChain(primaryId);
     let lastError: any = null;
+    let lastAttemptedProviderId: AIProviderID | null = null;
 
     for (const providerId of chain) {
       if (this.isProviderUnavailable(providerId)) {
@@ -106,6 +107,7 @@ export class AIProviderManager {
       if (!provider) continue;
 
       for (let attempt = 0; attempt <= retries; attempt++) {
+        lastAttemptedProviderId = providerId;
         try {
           const providerOptions: AIRequestOptions = {
             ...options,
@@ -141,9 +143,11 @@ export class AIProviderManager {
       console.warn(`AI Provider (${provider.id}) unavailable after retry; checking fallback.`, lastError);
     }
 
-    const message = this.getFriendlyProviderFailure(primaryId, lastError);
+    const failedProviderId = lastAttemptedProviderId || primaryId;
+    const message = this.getFriendlyProviderFailure(failedProviderId, lastError);
     const error: any = new Error(message);
-    error.provider = primaryId;
+    error.provider = failedProviderId;
+    error.requestedProvider = primaryId;
     error.status = 'unavailable';
     throw error;
   }
