@@ -75,3 +75,19 @@ test('normalizes array values, pointers, and highlighted indices', () => {
   assert.deepEqual(result.steps[0].visualState.indices, { left: 0, right: 2 });
   assert.deepEqual(result.steps[0].visualState.highlights, [0, 2]);
 });
+
+test('normalizes hash map aliases and entry-pair arrays', () => {
+  const step = createStep('lookup', 'lookup-map');
+  const result = validateExecutionSteps([{
+    ...step,
+    visualState: {
+      dictionary: [['first', 1], [2, { seen: true }]]
+    }
+  }]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps[0].visualState.map, {
+    first: 1,
+    '2': { seen: true }
+  });
+});

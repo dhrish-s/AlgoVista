@@ -24,6 +24,18 @@ const normalizeHighlights = (value: unknown): number[] => {
     .filter((index): index is number => Number.isInteger(index));
 };
 
+const normalizeMap = (value: unknown): Record<string, unknown> | undefined => {
+  if (isRecord(value)) return { ...value };
+  if (!Array.isArray(value)) return undefined;
+
+  const entries = value.filter(
+    (entry): entry is [unknown, unknown] => Array.isArray(entry) && entry.length >= 2
+  );
+  if (entries.length !== value.length) return undefined;
+
+  return Object.fromEntries(entries.map(([key, mapValue]) => [String(key), mapValue]));
+};
+
 export const normalizeVisualState = (rawState: UnknownRecord): VisualState => {
   const normalized = { ...rawState } as VisualState;
   const arrayAliases = [rawState.array, rawState.nums, rawState.values];
@@ -38,6 +50,16 @@ export const normalizeVisualState = (rawState: UnknownRecord): VisualState => {
     );
   } else if (hasArrayField) {
     delete normalized.array;
+  }
+
+  const mapAliases = [rawState.map, rawState.hashMap, rawState.hash_map, rawState.dictionary];
+  const map = mapAliases.map(normalizeMap).find((candidate) => candidate !== undefined);
+  const hasMapField = ['map', 'hashMap', 'hash_map', 'dictionary'].some((key) => key in rawState);
+
+  if (map) {
+    normalized.map = map;
+  } else if (hasMapField) {
+    delete normalized.map;
   }
 
   return normalized;

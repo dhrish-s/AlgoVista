@@ -92,8 +92,11 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
   );
 };
 
-export const HashMapVisualizer: React.FC<{ data: Record<string, any> }> = ({ data }) => {
-  const entries = Object.entries(data || {});
+export const HashMapVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
+  const safeData = data && typeof data === 'object' && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : {};
+  const entries = Object.entries(safeData);
 
   return (
     <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl">
@@ -116,7 +119,9 @@ export const HashMapVisualizer: React.FC<{ data: Record<string, any> }> = ({ dat
               >
                 <span className="text-[10px] font-mono text-indigo-400">{key}</span>
                 <span className="text-slate-600 text-[10px]">→</span>
-                <span className="text-sm font-mono text-white">{value}</span>
+                <span className="text-sm font-mono text-white truncate" title={formatVisualValue(value)}>
+                  {formatVisualValue(value)}
+                </span>
               </motion.div>
             ))}
           </AnimatePresence>
