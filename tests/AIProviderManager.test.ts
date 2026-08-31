@@ -109,3 +109,64 @@ test('attributes a final error to the fallback provider that actually failed', a
     }
   );
 });
+
+test('aborts a hanging primary request on timeout and uses the fallback', async () => {
+  let primarySignalWasAborted = false;
+  const primary = {
+    id: 'openai',
+    generateSteps: async (_problem: unknown, _code: string, _testCase: unknown, options?: { signal?: AbortSignal }) => {
+      options?.signal?.addEventListener('abort', () => {
+        primarySignalWasAborted = true;
+      });
+      return new Promise<never>(() => {});
+    }
+  } as unknown as AIProvider;
+  const fallback = createProvider('claude', () => validTrace);
+  const manager = createManager(primary, fallback.provider);
+
+  const response = await manager.generateSteps({}, '', {}, { task: 'steps', timeoutMs: 10 });
+
+  assert.equal(primarySignalWasAborted, true);
+  assert.equal(response.meta?.provider, 'claude');
+  assert.equal(response.meta?.status, 'fallback');
+  assert.equal(fallback.getCalls(), 1);
+});
+
+test('surfaces a timeout when every attempted provider hangs', async () => {
+  const createHangingProvider = (id: AIProviderID) => ({
+    id,
+    generateSteps: async () => new Promise<never>(() => {})
+  } as unknown as AIProvider);
+  const manager = createManager(createHangingProvider('openai'), createHangingProvider('claude'));
+
+  await assert.rejects(
+    manager.generateSteps({}, '', {}, { task: 'steps', timeoutMs: 10 }),
+    (error: Error & { provider?: AIProviderID; status?: string }) => {
+      assert.equal(error.provider, 'claude');
+      assert.equal(error.status, 'unavailable');
+      assert.match(error.message, /claude provider timed out/i);
+      return true;
+    }
+  );
+});
+
+test('keeps caller cancellation distinct from a provider timeout', async () => {
+  const controller = new AbortController();
+  const primary = {
+    id: 'openai',
+    generateSteps: async () => new Promise<never>(() => {})
+  } as unknown as AIProvider;
+  const fallback = createProvider('claude', () => validTrace);
+  const manager = createManager(primary, fallback.provider);
+  setTimeout(() => controller.abort(), 5);
+
+  await assert.rejects(
+    manager.generateSteps({}, '', {}, { task: 'steps', signal: controller.signal, timeoutMs: 100 }),
+    (error: Error) => {
+      assert.equal(error.name, 'AbortError');
+      assert.match(error.message, /cancelled/i);
+      return true;
+    }
+  );
+  assert.equal(fallback.getCalls(), 0);
+});

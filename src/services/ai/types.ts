@@ -63,5 +63,6 @@ export interface AIRequestOptions {
   model?: string;
   task?: string;
   signal?: AbortSignal;
+  timeoutMs?: number;
   onStream?: (chunk: string) => void;
 }

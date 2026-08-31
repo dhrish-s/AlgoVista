@@ -5,6 +5,7 @@ import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider, g
 import { validateExecutionSteps } from '../ExecutionStepValidator';
 
 export class AIProviderManager {
+  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
   private providers: Map<AIProviderID, AIProvider> = new Map();
   private providerFactories: Record<AIProviderID, () => AIProvider>;
   private settings: AIProviderSettings;
@@ -99,7 +100,9 @@ export class AIProviderManager {
     for (const providerId of chain) {
       if (this.isProviderUnavailable(providerId)) {
         const availability = getProviderAvailability(providerId);
-        lastError = new Error(`${providerId} provider is unavailable: ${availability.reason}`);
+        if (!lastAttemptedProviderId) {
+          lastError = new Error(`${providerId} provider is unavailable: ${availability.reason}`);
+        }
         continue;
       }
 
@@ -113,7 +116,12 @@ export class AIProviderManager {
             ...options,
             model: options?.model || this.settings.modelNames[provider.id]
           };
-          const response = await task(provider, providerOptions);
+          const response = await this.executeProviderAttempt(
+            task,
+            provider,
+            providerOptions,
+            Math.max(1, options?.timeoutMs ?? AIProviderManager.DEFAULT_REQUEST_TIMEOUT_MS)
+          );
           return {
             ...response,
             meta: {
@@ -134,6 +142,9 @@ export class AIProviderManager {
           }
 
           lastError = error;
+          if (error.name === 'TimeoutError') {
+            break;
+          }
           if (attempt < retries) {
             console.warn(`AI Provider (${provider.id}) execution failed, retrying...`, error);
           }
@@ -152,8 +163,56 @@ export class AIProviderManager {
     throw error;
   }
 
+  private async executeProviderAttempt<T>(
+    task: (provider: AIProvider, options: AIRequestOptions) => Promise<AIResponse<T>>,
+    provider: AIProvider,
+    options: AIRequestOptions,
+    timeoutMs: number
+  ): Promise<AIResponse<T>> {
+    const controller = new AbortController();
+    const callerSignal = options.signal;
+
+    if (callerSignal?.aborted) {
+      const error: any = new Error('Request was cancelled');
+      error.name = 'AbortError';
+      throw error;
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let handleCallerAbort: (() => void) | undefined;
+    const interruption = new Promise<never>((_, reject) => {
+      handleCallerAbort = () => {
+        const error: any = new Error('Request was cancelled');
+        error.name = 'AbortError';
+        reject(error);
+        controller.abort();
+      };
+      callerSignal?.addEventListener('abort', handleCallerAbort, { once: true });
+
+      timeoutId = setTimeout(() => {
+        const error: any = new Error(`Provider request timed out after ${timeoutMs} ms.`);
+        error.name = 'TimeoutError';
+        reject(error);
+        controller.abort();
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([
+        task(provider, { ...options, signal: controller.signal }),
+        interruption
+      ]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (handleCallerAbort) callerSignal?.removeEventListener('abort', handleCallerAbort);
+    }
+  }
+
   private getFriendlyProviderFailure(providerId: AIProviderID, error: any): string {
     const raw = String(error?.message || '').toLowerCase();
+    if (raw.includes('timed out')) {
+      return `${providerId} provider timed out before completing the request. Try again or switch providers.`;
+    }
     if (raw.includes('api key') || raw.includes('401') || raw.includes('403') || raw.includes('unavailable')) {
       return `${providerId} provider is unavailable. Check the API key or switch to an available provider.`;
     }
