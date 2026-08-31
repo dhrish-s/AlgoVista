@@ -104,3 +104,16 @@ test('normalizes stack aliases and item wrappers', () => {
   assert.equal(result.valid, true);
   assert.deepEqual(result.steps[0].visualState.stack, ['main', { frame: 'scan' }]);
 });
+
+test('normalizes queue aliases and item wrappers', () => {
+  const step = createStep('enqueue', 'enqueue');
+  const result = validateExecutionSteps([{
+    ...step,
+    visualState: {
+      bfsQueue: { items: [0, { node: 1 }] }
+    }
+  }]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps[0].visualState.queue, [0, { node: 1 }]);
+});

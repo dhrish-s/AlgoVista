@@ -21,7 +21,7 @@ export interface VisualState {
   array?: unknown[];
   map?: Record<string, unknown>;
   stack?: unknown[];
-  queue?: any[];
+  queue?: unknown[];
   tree?: any;
   graph?: any;
   dpTable?: any[][];

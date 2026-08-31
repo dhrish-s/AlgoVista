@@ -35,8 +35,8 @@ export const StackVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
   );
 };
 
-export const QueueVisualizer: React.FC<{ data: any[] }> = ({ data = [] }) => {
-  const safeData = data || [];
+export const QueueVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
+  const safeData = Array.isArray(data) ? data : [];
   return (
     <div className="flex flex-col items-center gap-2 p-4">
       <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2 mb-2">
@@ -47,13 +47,13 @@ export const QueueVisualizer: React.FC<{ data: any[] }> = ({ data = [] }) => {
         <AnimatePresence initial={false}>
           {safeData.map((item, idx) => (
             <motion.div
-              key={`${idx}-${item}`}
+              key={idx}
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 20, opacity: 0 }}
               className="w-10 h-10 bg-emerald-600 rounded border border-emerald-400 flex items-center justify-center text-white text-xs font-mono font-bold"
             >
-              {item}
+              {formatVisualValue(item)}
             </motion.div>
           ))}
         </AnimatePresence>

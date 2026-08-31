@@ -42,6 +42,12 @@ const normalizeStack = (value: unknown): unknown[] | undefined => {
   return undefined;
 };
 
+const normalizeQueue = (value: unknown): unknown[] | undefined => {
+  if (Array.isArray(value)) return [...value];
+  if (isRecord(value) && Array.isArray(value.items)) return [...value.items];
+  return undefined;
+};
+
 export const normalizeVisualState = (rawState: UnknownRecord): VisualState => {
   const normalized = { ...rawState } as VisualState;
   const arrayAliases = [rawState.array, rawState.nums, rawState.values];
@@ -76,6 +82,16 @@ export const normalizeVisualState = (rawState: UnknownRecord): VisualState => {
     normalized.stack = stack;
   } else if (hasStackField) {
     delete normalized.stack;
+  }
+
+  const queueAliases = [rawState.queue, rawState.bfsQueue, rawState.workQueue, rawState.deque];
+  const queue = queueAliases.map(normalizeQueue).find((candidate) => candidate !== undefined);
+  const hasQueueField = ['queue', 'bfsQueue', 'workQueue', 'deque'].some((key) => key in rawState);
+
+  if (queue) {
+    normalized.queue = queue;
+  } else if (hasQueueField) {
+    delete normalized.queue;
   }
 
   return normalized;
