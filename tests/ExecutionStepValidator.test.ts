@@ -42,5 +42,19 @@ test('accepts a legitimately short three-step trace', () => {
   assert.equal(result.valid, true);
   assert.equal(result.steps.length, 3);
   assert.equal(result.isTruncated, false);
+  assert.equal(result.rejectedStepCount, 0);
   assert.deepEqual(result.steps.map((step) => step.id), ['initialize', 'compare', 'finish']);
+});
+
+test('reports malformed steps retained alongside a usable partial trace', () => {
+  const result = validateExecutionSteps([
+    createStep('initialize', 'init'),
+    { id: '', line: 2, explanation: 'Missing an id', operationType: 'compare', variables: {}, visualState: {} },
+    createStep('finish', 'return')
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.equal(result.steps.length, 2);
+  assert.equal(result.rejectedStepCount, 1);
+  assert.match(result.warning || '', /Step 1: missing or invalid id/);
 });

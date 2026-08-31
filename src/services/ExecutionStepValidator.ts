@@ -4,7 +4,9 @@ export interface StepValidationResult {
   valid: boolean;
   steps: ExecutionStep[];
   isTruncated: boolean;
+  rejectedStepCount: number;
   error?: string;
+  warning?: string;
 }
 
 const MAX_STEPS = 50;
@@ -21,6 +23,7 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
       valid: false,
       steps: [],
       isTruncated: false,
+      rejectedStepCount: 0,
       error: 'Step trace is not an array'
     };
   }
@@ -36,7 +39,11 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
         valid: true,
         steps: validSteps,
         isTruncated: true,
-        error: `Trace truncated from ${rawSteps.length} steps to ${MAX_STEPS} max limit`
+        rejectedStepCount: errors.length,
+        error: `Trace truncated from ${rawSteps.length} steps to ${MAX_STEPS} max limit`,
+        warning: errors.length > 0
+          ? `Skipped ${errors.length} malformed steps before reaching the trace limit: ${errors.slice(0, 3).join('; ')}`
+          : undefined
       };
     }
 
@@ -90,6 +97,7 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
       valid: false,
       steps: [],
       isTruncated: false,
+      rejectedStepCount: errors.length,
       error: `No valid steps found. Errors: ${errors.slice(0, 3).join('; ')}`
     };
   }
@@ -97,6 +105,10 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
   return {
     valid: true,
     steps: validSteps,
-    isTruncated: false
+    isTruncated: false,
+    rejectedStepCount: errors.length,
+    warning: errors.length > 0
+      ? `Skipped ${errors.length} malformed steps: ${errors.slice(0, 3).join('; ')}`
+      : undefined
   };
 };

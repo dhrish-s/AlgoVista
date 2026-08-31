@@ -5,6 +5,7 @@ import { validateExecutionSteps } from './ExecutionStepValidator';
 export interface GeneratedExecutionSteps extends Array<ExecutionStep> {
   generationFeedback?: {
     truncated: boolean;
+    rejectedStepCount: number;
     message?: string;
   };
   providerMeta?: {
@@ -58,7 +59,8 @@ export class DynamicStepGenerator {
     const steps = validation.steps as GeneratedExecutionSteps;
     steps.generationFeedback = {
       truncated: validation.isTruncated,
-      message: validation.error
+      rejectedStepCount: validation.rejectedStepCount,
+      message: [validation.error, validation.warning].filter(Boolean).join(' ') || undefined
     };
     steps.providerMeta = meta;
     return steps;
@@ -104,7 +106,8 @@ export class DynamicStepGenerator {
     const steps = validation.steps as GeneratedExecutionSteps;
     steps.generationFeedback = {
       truncated: validation.isTruncated,
-      message: validation.error
+      rejectedStepCount: validation.rejectedStepCount,
+      message: [validation.error, validation.warning].filter(Boolean).join(' ') || undefined
     };
     steps.providerMeta = meta;
     return steps;
