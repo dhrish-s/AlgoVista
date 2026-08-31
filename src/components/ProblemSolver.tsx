@@ -167,6 +167,8 @@ export const ProblemSolver: React.FC = () => {
         errorMsg = "The provider returned a malformed trace. Regenerate the visualization, or switch providers if this keeps happening.";
       } else if (e.message?.includes('No valid steps found')) {
         errorMsg = "The trace contained no usable execution steps. Try a different approach, smaller test case, or clearer code.";
+      } else if (e.message?.toLowerCase().includes('timed out')) {
+        errorMsg = "Trace generation took too long and was stopped. Try again with a smaller example, or switch AI providers.";
       } else if (e.message?.includes('provider')) {
         errorMsg = "The current AI provider could not generate a trace. Check provider settings or API key, then try again.";
       }
