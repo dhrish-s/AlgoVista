@@ -171,7 +171,7 @@ export class GeminiProvider implements AIProvider {
          For hash-based algorithms, visualState MUST use map as an object of key-value pairs.
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
-         For tree algorithms, visualState MUST use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children MUST contain node id strings.
+         For tree algorithms, use a compact base-and-delta trace. The first tree step's visualState MUST contain treeBase with nodes shaped as { id, value, children } and rootId, plus treeDelta. Every later tree step MUST contain only treeDelta and MUST NOT repeat treeBase or a full tree snapshot. A treeDelta may use activeNodeId (string or null), highlightNodeIds, unhighlightNodeIds, rootId (string or null), addNodes, updateNodes shaped as { id, value?, children? }, and removeNodeIds. Use {} when a step changes no tree visualization fields. Keep node ids stable, make every reference valid in the resulting tree, and include structural fields only when they actually change.
          For graph algorithms, visualState MUST use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints MUST contain node id strings.
          For dynamic programming algorithms, visualState MUST use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
          For linked-list algorithms and pointer traversal or manipulation over a linked list, visualState MUST use linkedList with nodes shaped as { id, value, nextId }, headId, activeNodeId, and highlightedNodeIds. Every node MUST include nextId as a node id string or null, and each null-terminated chain's tail MUST use null explicitly. Use stable node ids across steps, keep headId and nextId links synchronized with the CURRENT step after its described operations, and highlight the nodes relevant to that step. This applies to problems such as Reverse Linked List, Merge Two Sorted Lists, Remove Nth Node From End of List, Middle of the Linked List, Linked List Cycle, and Palindrome Linked List. Use another visualization type when a linked list is not the algorithm's meaningful state.
@@ -186,7 +186,7 @@ export class GeminiProvider implements AIProvider {
          For hash-based algorithms, visualState MUST use map as an object of key-value pairs.
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
-         For tree algorithms, visualState MUST use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children MUST contain node id strings.
+         For tree algorithms, use a compact base-and-delta trace. The first tree step's visualState MUST contain treeBase with nodes shaped as { id, value, children } and rootId, plus treeDelta. Every later tree step MUST contain only treeDelta and MUST NOT repeat treeBase or a full tree snapshot. A treeDelta may use activeNodeId (string or null), highlightNodeIds, unhighlightNodeIds, rootId (string or null), addNodes, updateNodes shaped as { id, value?, children? }, and removeNodeIds. Use {} when a step changes no tree visualization fields. Keep node ids stable, make every reference valid in the resulting tree, and include structural fields only when they actually change.
          For graph algorithms, visualState MUST use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints MUST contain node id strings.
          For dynamic programming algorithms, visualState MUST use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
          For linked-list algorithms and pointer traversal or manipulation over a linked list, visualState MUST use linkedList with nodes shaped as { id, value, nextId }, headId, activeNodeId, and highlightedNodeIds. Every node MUST include nextId as a node id string or null, and each null-terminated chain's tail MUST use null explicitly. Use stable node ids across steps, keep headId and nextId links synchronized with the CURRENT step after its described operations, and highlight the nodes relevant to that step. This applies to problems such as Reverse Linked List, Merge Two Sorted Lists, Remove Nth Node From End of List, Middle of the Linked List, Linked List Cycle, and Palindrome Linked List. Use another visualization type when a linked list is not the algorithm's meaningful state.
@@ -224,7 +224,7 @@ export class GeminiProvider implements AIProvider {
                   map: { type: Type.OBJECT, additionalProperties: { type: Type.STRING } },
                   stack: { type: Type.ARRAY, items: { type: Type.STRING } },
                   queue: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  tree: {
+                  treeBase: {
                     type: Type.OBJECT,
                     properties: {
                       nodes: {
@@ -238,9 +238,39 @@ export class GeminiProvider implements AIProvider {
                           }
                         }
                       },
-                      rootId: { type: Type.STRING },
-                      activeNodeId: { type: Type.STRING },
-                      visitedNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
+                      rootId: { type: Type.STRING }
+                    }
+                  },
+                  treeDelta: {
+                    type: Type.OBJECT,
+                    properties: {
+                      activeNodeId: { type: Type.STRING, nullable: true },
+                      highlightNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      unhighlightNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      rootId: { type: Type.STRING, nullable: true },
+                      addNodes: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING },
+                            value: { type: Type.STRING },
+                            children: { type: Type.ARRAY, items: { type: Type.STRING } }
+                          }
+                        }
+                      },
+                      updateNodes: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING },
+                            value: { type: Type.STRING },
+                            children: { type: Type.ARRAY, items: { type: Type.STRING } }
+                          }
+                        }
+                      },
+                      removeNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
                     }
                   },
                   graph: {
