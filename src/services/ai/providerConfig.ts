@@ -34,7 +34,7 @@ export const getDefaultFallbackProvider = (): AIProviderID => {
 export const getDefaultModelNames = (): Record<AIProviderID, string> => ({
   gemini: envValue('VITE_GEMINI_MODEL') || 'gemini-3-flash-preview',
   openai: envValue('VITE_OPENAI_MODEL') || 'gpt-4o-mini',
-  claude: envValue('VITE_CLAUDE_MODEL') || 'claude-sonnet-4-20250514'
+  claude: envValue('VITE_CLAUDE_MODEL') || 'claude-sonnet-5'
 });
 
 export const getProviderAvailability = (providerId: AIProviderID): ProviderAvailability => {

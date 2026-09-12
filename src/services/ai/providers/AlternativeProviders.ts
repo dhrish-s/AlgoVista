@@ -180,7 +180,7 @@ export class ClaudeProvider implements AIProvider {
     assertProviderAvailable(this.id);
     const url = 'https://api.anthropic.com/v1/messages';
     const apiKey = getProviderApiKey(this.id);
-    const model = options?.model || 'claude-sonnet-4-20250514';
+    const model = options?.model || 'claude-sonnet-5';
     const headers = {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
