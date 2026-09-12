@@ -44,6 +44,30 @@ test('provider request bodies omit model-sensitive sampling parameters', async (
   }
 });
 
+test('Claude reserves a larger output budget only for execution steps', async () => {
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+
+  const originalFetch = globalThis.fetch;
+  const requestBodies: Record<string, unknown>[] = [];
+  let requestCount = 0;
+  globalThis.fetch = async (_input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)));
+    const text = requestCount++ === 0 ? '{}' : '[]';
+    return new Response(JSON.stringify({ content: [{ type: 'text', text }] }), { status: 200 });
+  };
+
+  try {
+    const provider = new ClaudeProvider();
+    await provider.parseProblem('Two Sum');
+    await provider.generateSteps({ title: 'Two Sum', statement: 'Find two values.' } as never, 'Use a map.', {});
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(requestBodies[0].max_tokens, 4096);
+  assert.equal(requestBodies[1].max_tokens, 16384);
+});
+
 test('provider adapters include structured API error messages in thrown errors', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';

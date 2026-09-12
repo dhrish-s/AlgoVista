@@ -44,6 +44,9 @@ Use no more than 50 logical steps. Do not include markdown.`;
 const COACH_INSTRUCTIONS = `You are AlgoVista's reasoning coach.
 Never provide direct code. Ask concise Socratic questions and give minimal hints focused on pattern recognition, constraints, edge cases, and complexity.`;
 
+const CLAUDE_DEFAULT_MAX_TOKENS = 4096;
+const CLAUDE_STEP_MAX_TOKENS = 16384;
+
 const asAbortError = () => {
   const err: any = new Error('Request was cancelled');
   err.name = 'AbortError';
@@ -196,7 +199,12 @@ New user message: ${userMessage}`
 export class ClaudeProvider implements AIProvider {
   id: AIProviderID = 'claude';
 
-  private async requestText(system: string, userContent: string, options?: AIRequestOptions): Promise<any> {
+  private async requestText(
+    system: string,
+    userContent: string,
+    options?: AIRequestOptions,
+    maxTokens: number = CLAUDE_DEFAULT_MAX_TOKENS
+  ): Promise<any> {
     assertProviderAvailable(this.id);
     const url = 'https://api.anthropic.com/v1/messages';
     const apiKey = getProviderApiKey(this.id);
@@ -209,7 +217,7 @@ export class ClaudeProvider implements AIProvider {
     };
     const body = {
       model,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       system: system || undefined,
       messages: [{ role: 'user', content: userContent }]
     };
@@ -293,7 +301,8 @@ Input: ${JSON.stringify(testCase?.input)}
 Expected output: ${JSON.stringify(testCase?.output)}
 Approach or user code:
 ${code}`,
-      options
+      options,
+      CLAUDE_STEP_MAX_TOKENS
     );
 
     return {
