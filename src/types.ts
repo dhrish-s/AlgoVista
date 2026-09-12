@@ -53,6 +53,19 @@ export interface GraphVisualState {
   visitedNodeIds?: string[];
 }
 
+export interface DPCellPosition {
+  row: number;
+  column: number;
+}
+
+export interface DPTableVisualState {
+  values: VisualPrimitive[][];
+  rowLabels?: VisualPrimitive[];
+  columnLabels?: VisualPrimitive[];
+  activeCell?: DPCellPosition;
+  highlightedCells?: DPCellPosition[];
+}
+
 export interface VisualState {
   array?: unknown[];
   map?: Record<string, unknown>;
@@ -60,7 +73,7 @@ export interface VisualState {
   queue?: unknown[];
   tree?: TreeVisualState;
   graph?: GraphVisualState;
-  dpTable?: any[][];
+  dpTable?: DPTableVisualState;
   indices?: Record<string, number>;
   highlights?: (number | string)[];
 }
