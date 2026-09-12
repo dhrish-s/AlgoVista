@@ -32,13 +32,34 @@ export interface TreeVisualState {
   visitedNodeIds?: string[];
 }
 
+export interface GraphNodeState {
+  id: string;
+  value: VisualPrimitive;
+}
+
+export interface GraphEdgeState {
+  id: string;
+  source: string;
+  target: string;
+  weight?: VisualPrimitive;
+}
+
+export interface GraphVisualState {
+  nodes: GraphNodeState[];
+  edges: GraphEdgeState[];
+  directed?: boolean;
+  activeNodeId?: string;
+  activeEdgeId?: string;
+  visitedNodeIds?: string[];
+}
+
 export interface VisualState {
   array?: unknown[];
   map?: Record<string, unknown>;
   stack?: unknown[];
   queue?: unknown[];
   tree?: TreeVisualState;
-  graph?: any;
+  graph?: GraphVisualState;
   dpTable?: any[][];
   indices?: Record<string, number>;
   highlights?: (number | string)[];
