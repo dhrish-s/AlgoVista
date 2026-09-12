@@ -4,6 +4,7 @@ import { DPCellPosition, DPTableVisualState, VisualPrimitive } from '../../types
 import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerStateMessage } from './VisualizerStateMessage';
+import { VisualizerShell } from './VisualizerShell';
 
 type DPTableValidationResult =
   | { valid: true; state: DPTableVisualState }
@@ -132,12 +133,8 @@ export const DPTableVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
   const hasColumnLabels = validation.state.columnLabels !== undefined;
 
   return (
-    <section className="w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/50 p-6">
-      <div className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-        <Table2 className="h-3.5 w-3.5 text-indigo-400" />
-        Dynamic Programming Table
-      </div>
-      <div className="overflow-auto">
+    <VisualizerShell title="Dynamic Programming Table" icon={<Table2 className="h-3.5 w-3.5 text-indigo-400" />}>
+      <div className="overflow-x-auto pb-2">
         <table className="mx-auto border-separate border-spacing-1 font-mono text-xs">
           {hasColumnLabels && (
             <thead>
@@ -181,6 +178,6 @@ export const DPTableVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
           </tbody>
         </table>
       </div>
-    </section>
+    </VisualizerShell>
   );
 };

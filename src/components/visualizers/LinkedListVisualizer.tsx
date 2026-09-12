@@ -5,6 +5,7 @@ import { LinkedListNodeState, LinkedListVisualState, VisualPrimitive } from '../
 import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerStateMessage } from './VisualizerStateMessage';
+import { VisualizerShell } from './VisualizerShell';
 
 type LinkedListValidationResult =
   | { valid: true; state: LinkedListVisualState }
@@ -211,11 +212,7 @@ export const LinkedListVisualizer: React.FC<{ data?: unknown }> = ({ data }) => 
   const segments = buildLinkedListSegments(validation.state);
 
   return (
-    <section className="w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/50 p-6">
-      <div className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-        <ListRestart className="h-3.5 w-3.5 text-indigo-400" />
-        Linked List
-      </div>
+    <VisualizerShell title="Linked List" icon={<ListRestart className="h-3.5 w-3.5 text-indigo-400" />}>
       <div className="space-y-5 overflow-x-auto pb-2">
         {segments.map((segment, segmentIndex) => (
           <div key={segment.nodeIds[0]}>
@@ -258,6 +255,6 @@ export const LinkedListVisualizer: React.FC<{ data?: unknown }> = ({ data }) => 
           </div>
         ))}
       </div>
-    </section>
+    </VisualizerShell>
   );
 };

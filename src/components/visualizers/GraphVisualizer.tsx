@@ -4,6 +4,7 @@ import { GraphNodeState, GraphVisualState } from '../../types';
 import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerStateMessage } from './VisualizerStateMessage';
+import { VisualizerShell } from './VisualizerShell';
 
 type GraphValidationResult =
   | { valid: true; state: GraphVisualState }
@@ -146,11 +147,11 @@ export const GraphVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
   const visited = new Set(validation.state.visitedNodeIds);
 
   return (
-    <section className="w-full overflow-auto rounded-2xl border border-slate-800 bg-slate-950/50 p-6">
-      <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-        <Waypoints className="h-3.5 w-3.5 text-indigo-400" />
-        {validation.state.directed ? 'Directed Graph' : 'Graph'}
-      </div>
+    <VisualizerShell
+      title={validation.state.directed ? 'Directed Graph' : 'Graph'}
+      icon={<Waypoints className="h-3.5 w-3.5 text-indigo-400" />}
+    >
+      <div className="overflow-x-auto pb-2">
       <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[560px] w-full" role="img" aria-label="Algorithm graph state">
         <defs>
           <marker id={arrowId} viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -202,6 +203,7 @@ export const GraphVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
           );
         })}
       </svg>
-    </section>
+      </div>
+    </VisualizerShell>
   );
 };

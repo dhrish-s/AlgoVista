@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
+import { VisualizerShell } from './VisualizerShell';
 
 interface ArrayVisualizerProps {
   data?: unknown;
@@ -34,8 +35,9 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
   }
 
   return (
-    <div className="relative flex flex-col items-center gap-8 py-8 w-full overflow-x-auto scrollbar-hide">
-      <div className="flex gap-2">
+    <VisualizerShell title="Array" icon={<span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />}>
+      <div className="relative w-full overflow-x-auto pb-2 pt-8">
+      <div className="flex min-w-max justify-center gap-2 px-1">
         {safeData.map((item, idx) => {
           const isHighlighted = safeHighlights.includes(idx);
           const activePointers = Object.entries(safePointers)
@@ -44,7 +46,7 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
           const isActive = activePointers.length > 0;
 
           return (
-            <div key={idx} className="relative flex flex-col items-center">
+            <div key={idx} className="relative flex flex-none flex-col items-center">
               {/* Pointer Labels Above */}
               <div className="absolute -top-8 h-6 flex flex-col items-center">
                 <AnimatePresence>
@@ -88,7 +90,8 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
           );
         })}
       </div>
-    </div>
+      </div>
+    </VisualizerShell>
   );
 };
 
@@ -99,15 +102,11 @@ export const HashMapVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
   const entries = Object.entries(safeData);
 
   return (
-    <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl">
-      <div className="text-[10px] font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-        Hash Map (Lookups: O(1))
-      </div>
+    <VisualizerShell title="Hash Map (Lookups: O(1))" icon={<span className="h-1.5 w-1.5 rounded-full bg-purple-500" />}>
       {entries.length === 0 ? (
         <div className="text-xs text-slate-600 italic py-2">No entries yet</div>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <AnimatePresence mode="popLayout">
             {entries.map(([key, value]) => (
               <motion.div
@@ -127,6 +126,6 @@ export const HashMapVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
           </AnimatePresence>
         </div>
       )}
-    </div>
+    </VisualizerShell>
   );
 };

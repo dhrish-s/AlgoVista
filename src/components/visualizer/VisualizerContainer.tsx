@@ -36,7 +36,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
   const providedStateKeys = Object.keys(visualState);
 
   return (
-    <div className="w-full flex flex-col items-center justify-center gap-10 p-8 h-full">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-6 p-4 sm:gap-10 sm:p-8">
       {!hasSupportedState && (
         <VisualizerStateMessage title="Visualization unavailable" tone="error">
           <span className="font-bold">Issue:</span> No supported visualization for this step<br/>
@@ -81,14 +81,14 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
       )}
 
       {/* Concurrent Secondary Structures */}
-      <div className="flex gap-12 w-full max-w-5xl justify-center items-start">
+      <div className="flex w-full max-w-5xl flex-wrap items-stretch justify-center gap-6 lg:gap-8">
          <AnimatePresence mode="popLayout">
            {visualState.map && (
              <motion.div 
                initial={{ opacity: 0, x: -20 }}
                animate={{ opacity: 1, x: 0 }}
                exit={{ opacity: 0, x: -20 }}
-               className="flex-1"
+               className="w-full min-w-0 md:flex-1"
              >
                 <HashMapVisualizer data={visualState.map} />
              </motion.div>
@@ -99,7 +99,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
                initial={{ opacity: 0, scale: 0.9 }}
                animate={{ opacity: 1, scale: 1 }}
                exit={{ opacity: 0, scale: 0.9 }}
-               className="w-48 flex-shrink-0"
+               className="w-full flex-shrink-0 sm:w-48"
              >
                 <StackVisualizer data={visualState.stack} />
              </motion.div>
@@ -110,6 +110,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
                initial={{ opacity: 0, y: 20 }}
                animate={{ opacity: 1, y: 0 }}
                exit={{ opacity: 0, y: 20 }}
+               className="w-full min-w-0 md:flex-1"
              >
                 <QueueVisualizer data={visualState.queue} />
              </motion.div>
@@ -118,7 +119,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
       </div>
 
       {/* Variables Monitor */}
-      <div className="fixed bottom-32 right-8 flex flex-col gap-2 p-4 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-2xl shadow-2xl z-40 max-w-[200px]">
+      <div className="fixed bottom-28 right-4 z-40 flex max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-2xl backdrop-blur sm:bottom-32 sm:right-8 sm:max-w-[200px]">
          <div className="flex items-center gap-2 mb-1 border-b border-white/5 pb-2">
             <Info className="w-3 h-3 text-indigo-400" />
             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Environment</span>

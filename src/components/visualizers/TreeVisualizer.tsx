@@ -5,6 +5,7 @@ import { TreeNodeState, TreeVisualState } from '../../types';
 import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerStateMessage } from './VisualizerStateMessage';
+import { VisualizerShell } from './VisualizerShell';
 
 type TreeValidationResult =
   | { valid: true; state: TreeVisualState; rootId?: string }
@@ -183,12 +184,9 @@ export const TreeVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
 
   const nodes = new Map(validation.state.nodes.map((node) => [node.id, node]));
   return (
-    <section className="w-full overflow-auto rounded-2xl border border-slate-800 bg-slate-950/50 p-6">
-      <div className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-        <Network className="h-3.5 w-3.5 text-indigo-400" />
-        Tree
-      </div>
-      <div className="flex min-w-max justify-center pb-2">
+    <VisualizerShell title="Tree" icon={<Network className="h-3.5 w-3.5 text-indigo-400" />}>
+      <div className="overflow-x-auto pb-2">
+      <div className="flex min-w-max justify-center px-1">
         <TreeBranch
           nodeId={validation.rootId}
           nodes={nodes}
@@ -196,6 +194,7 @@ export const TreeVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
           visitedNodeIds={new Set(validation.state.visitedNodeIds)}
         />
       </div>
-    </section>
+      </div>
+    </VisualizerShell>
   );
 };
