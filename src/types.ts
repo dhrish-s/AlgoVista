@@ -66,6 +66,19 @@ export interface DPTableVisualState {
   highlightedCells?: DPCellPosition[];
 }
 
+export interface LinkedListNodeState {
+  id: string;
+  value: VisualPrimitive;
+  nextId: string | null;
+}
+
+export interface LinkedListVisualState {
+  nodes: LinkedListNodeState[];
+  headId?: string | null;
+  activeNodeId?: string;
+  highlightedNodeIds?: string[];
+}
+
 export interface VisualState {
   array?: unknown[];
   map?: Record<string, unknown>;
@@ -74,6 +87,7 @@ export interface VisualState {
   tree?: TreeVisualState;
   graph?: GraphVisualState;
   dpTable?: DPTableVisualState;
+  linkedList?: LinkedListVisualState;
   indices?: Record<string, number>;
   highlights?: (number | string)[];
 }
