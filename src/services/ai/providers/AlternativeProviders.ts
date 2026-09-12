@@ -71,6 +71,14 @@ const asProviderApiError = (fallbackMessage: string, status: number, bodyText: s
   return err;
 };
 
+const asProviderTruncationError = (providerName: string, maxTokens: number) => {
+  const err: any = new Error(
+    `${providerName} response was truncated after reaching the ${maxTokens.toLocaleString()}-token output limit. Try again with a smaller trace.`
+  );
+  err.name = 'ProviderTruncationError';
+  return err;
+};
+
 const safeUnsupported = <T>(providerId: AIProviderID, data: T): AIResponse<T> => ({
   data,
   meta: {
@@ -263,6 +271,9 @@ export class ClaudeProvider implements AIProvider {
     }
 
     const json = JSON.parse(bodyText);
+    if (json?.stop_reason === 'max_tokens') {
+      throw asProviderTruncationError('Claude', maxTokens);
+    }
     const content = json?.content?.map((part: any) => part?.type === 'text' ? part.text : '').join('').trim();
     if (!content) {
       throw new Error('Claude returned an empty response.');

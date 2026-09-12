@@ -213,6 +213,9 @@ export class AIProviderManager {
     if (error?.name === 'ProviderAPIError') {
       return error.message;
     }
+    if (error?.name === 'ProviderTruncationError') {
+      return error.message;
+    }
     if (raw.includes('timed out')) {
       return `${providerId} provider timed out before completing the request. Try again or switch providers.`;
     }

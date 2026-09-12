@@ -68,6 +68,37 @@ test('Claude reserves a larger output budget only for execution steps', async ()
   assert.equal(requestBodies[1].max_tokens, 16384);
 });
 
+test('Claude reports max-token truncation before parsing partial JSON', async () => {
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    content: [{ type: 'text', text: '[{"id":"unfinished"' }],
+    stop_reason: 'max_tokens',
+    usage: { output_tokens: 16384 }
+  }), { status: 200 });
+
+  try {
+    const manager = new AIProviderManager({
+      defaultProvider: 'claude',
+      fallbackProvider: 'claude',
+      modelNames: {
+        gemini: 'gemini-3-flash-preview',
+        openai: 'gpt-4o-mini',
+        claude: 'claude-sonnet-5'
+      },
+      taskRouting: { steps: 'claude' }
+    });
+
+    await assert.rejects(
+      manager.generateSteps({}, '', {}, { provider: 'claude', task: 'steps' }),
+      /Claude response was truncated after reaching the 16,384-token output limit/
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('provider adapters include structured API error messages in thrown errors', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
