@@ -124,10 +124,7 @@ export const useStore = create<AppState>()(
       }),
 
       setUserCode: (code) => set({ userCode: code }),
-      setSteps: (steps) => set({
-        currentSteps: steps,
-        currentStepIndex: steps.length > 0 ? 0 : -1
-      }),
+      setSteps: (steps) => set({ currentSteps: steps }),
       setStepIndex: (index) => set((state) => ({ 
         currentStepIndex: typeof index === 'function' ? index(state.currentStepIndex) : index 
       })),
