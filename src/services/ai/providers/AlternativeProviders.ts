@@ -73,8 +73,7 @@ export class OpenAIProvider implements AIProvider {
       },
       body: JSON.stringify({
         model: options?.model || 'gpt-4o-mini',
-        messages,
-        temperature: 0.2
+        messages
       })
     });
 
@@ -191,7 +190,6 @@ export class ClaudeProvider implements AIProvider {
     const body = {
       model,
       max_tokens: 4096,
-      temperature: 0.2,
       system: system || undefined,
       messages: [{ role: 'user', content: userContent }]
     };
