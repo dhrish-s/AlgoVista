@@ -38,6 +38,7 @@ For hash-based algorithms, visualState must use map as an object of key-value pa
 For stack algorithms, visualState must use stack as an array ordered from bottom to top.
 For queue algorithms, visualState must use queue as an array ordered from front to back.
 For tree algorithms, visualState must use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children must contain node id strings.
+For graph algorithms, visualState must use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints must contain node id strings.
 Use no more than 50 logical steps. Do not include markdown.`;
 
 const COACH_INSTRUCTIONS = `You are AlgoVista's reasoning coach.

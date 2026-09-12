@@ -171,6 +171,7 @@ export class GeminiProvider implements AIProvider {
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
          For tree algorithms, visualState MUST use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children MUST contain node id strings.
+         For graph algorithms, visualState MUST use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints MUST contain node id strings.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `
       : `Generate a step-by-step execution trace for problem "${problem.title}" using approach "${code}". 
@@ -182,6 +183,7 @@ export class GeminiProvider implements AIProvider {
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
          For tree algorithms, visualState MUST use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children MUST contain node id strings.
+         For graph algorithms, visualState MUST use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints MUST contain node id strings.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `;
 
@@ -224,6 +226,37 @@ export class GeminiProvider implements AIProvider {
                       },
                       rootId: { type: Type.STRING },
                       activeNodeId: { type: Type.STRING },
+                      visitedNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                  },
+                  graph: {
+                    type: Type.OBJECT,
+                    properties: {
+                      nodes: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING },
+                            value: { type: Type.STRING }
+                          }
+                        }
+                      },
+                      edges: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING },
+                            source: { type: Type.STRING },
+                            target: { type: Type.STRING },
+                            weight: { type: Type.STRING }
+                          }
+                        }
+                      },
+                      directed: { type: Type.BOOLEAN },
+                      activeNodeId: { type: Type.STRING },
+                      activeEdgeId: { type: Type.STRING },
                       visitedNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
                     }
                   },
