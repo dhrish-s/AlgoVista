@@ -117,3 +117,123 @@ test('normalizes queue aliases and item wrappers', () => {
   assert.equal(result.valid, true);
   assert.deepEqual(result.steps[0].visualState.queue, [0, { node: 1 }]);
 });
+
+const treeNodes = [
+  { id: 'root', value: 5, children: ['left', 'right'] },
+  { id: 'left', value: 2, children: [] },
+  { id: 'right', value: 8, children: [] }
+];
+
+const createTreeStep = (id: string, visualState: ExecutionStep['visualState']): ExecutionStep => ({
+  id,
+  line: 1,
+  explanation: `Execute ${id}`,
+  operationType: 'visit-node',
+  variables: {},
+  visualState
+});
+
+test('precomputes immutable tree snapshots for direct step-index access', () => {
+  const result = validateExecutionSteps([
+    createTreeStep('visit-root', {
+      treeBase: { nodes: treeNodes, rootId: 'root' },
+      treeDelta: { activeNodeId: 'root', highlightNodeIds: ['root'] }
+    }),
+    createTreeStep('visit-left', {
+      treeDelta: { activeNodeId: 'left', highlightNodeIds: ['left'] }
+    }),
+    createTreeStep('update-and-visit-right', {
+      treeDelta: {
+        activeNodeId: 'right',
+        highlightNodeIds: ['right'],
+        unhighlightNodeIds: ['root'],
+        updateNodes: [{ id: 'left', value: 3 }]
+      }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.equal(result.steps.length, 3);
+  assert.equal(result.steps[0].visualState.tree?.activeNodeId, 'root');
+  assert.deepEqual(result.steps[1].visualState.tree?.visitedNodeIds, ['root', 'left']);
+  assert.equal(result.steps[2].visualState.tree?.activeNodeId, 'right');
+  assert.deepEqual(result.steps[2].visualState.tree?.visitedNodeIds, ['left', 'right']);
+  assert.equal(result.steps[0].visualState.tree?.nodes[1].value, 2);
+  assert.equal(result.steps[2].visualState.tree?.nodes[1].value, 3);
+  assert.equal(result.steps[2].visualState.treeBase, undefined);
+  assert.equal(result.steps[2].visualState.treeDelta, undefined);
+});
+
+test('rejects a malformed tree base before accepting the trace', () => {
+  const result = validateExecutionSteps([
+    createStep('setup', 'init'),
+    createTreeStep('bad-tree', {
+      treeBase: {
+        nodes: [{ id: 'root', value: 5, children: ['missing'] }],
+        rootId: 'root'
+      },
+      treeDelta: {}
+    })
+  ]);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.steps.length, 0);
+  assert.match(result.error || '', /references missing child "missing"/);
+});
+
+test('skips an invalid later tree delta and folds the next valid delta', () => {
+  const result = validateExecutionSteps([
+    createTreeStep('visit-root', {
+      treeBase: { nodes: treeNodes, rootId: 'root' },
+      treeDelta: { activeNodeId: 'root' }
+    }),
+    createTreeStep('visit-missing', {
+      treeDelta: { activeNodeId: 'missing' }
+    }),
+    createTreeStep('visit-right', {
+      treeDelta: { activeNodeId: 'right', highlightNodeIds: ['right'] }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['visit-root', 'visit-right']);
+  assert.equal(result.rejectedStepCount, 1);
+  assert.match(result.warning || '', /active tree node "missing" does not exist/);
+  assert.equal(result.steps[1].visualState.tree?.activeNodeId, 'right');
+});
+
+test('folds coordinated tree node additions and removals', () => {
+  const result = validateExecutionSteps([
+    createTreeStep('base', {
+      treeBase: {
+        nodes: [
+          { id: 'root', value: 5, children: ['left'] },
+          { id: 'left', value: 2, children: [] }
+        ],
+        rootId: 'root'
+      },
+      treeDelta: {}
+    }),
+    createTreeStep('add-right', {
+      treeDelta: {
+        addNodes: [{ id: 'right', value: 8, children: [] }],
+        updateNodes: [{ id: 'root', children: ['left', 'right'] }]
+      }
+    }),
+    createTreeStep('remove-left', {
+      treeDelta: {
+        removeNodeIds: ['left'],
+        updateNodes: [{ id: 'root', children: ['right'] }]
+      }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps[1].visualState.tree?.nodes.map((node) => node.id), [
+    'root', 'left', 'right'
+  ]);
+  assert.deepEqual(result.steps[2].visualState.tree?.nodes.map((node) => node.id), [
+    'root', 'right'
+  ]);
+  assert.deepEqual(result.steps[2].visualState.tree?.nodes[0].children, ['right']);
+});

@@ -191,6 +191,40 @@ test('OpenAI and Claude step instructions include the linked-list contract', asy
   }
 });
 
+test('OpenAI and Claude instructions require compact tree deltas', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+
+  const originalFetch = globalThis.fetch;
+  const requestBodies: Record<string, any>[] = [];
+  globalThis.fetch = async (input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)));
+    const isClaude = String(input).includes('anthropic.com');
+    return new Response(JSON.stringify(isClaude
+      ? { content: [{ type: 'text', text: '[]' }] }
+      : { choices: [{ message: { content: '[]' } }] }
+    ), { status: 200 });
+  };
+
+  try {
+    const problem = { title: 'Validate Binary Search Tree', statement: 'Validate a binary tree.' } as never;
+    await new OpenAIProvider().generateSteps(problem, 'Use bounds.', {});
+    await new ClaudeProvider().generateSteps(problem, 'Use bounds.', {});
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  for (const instructions of [
+    requestBodies[0].messages[0].content as string,
+    requestBodies[1].system as string
+  ]) {
+    assert.match(instructions, /first tree step's visualState must contain treeBase/);
+    assert.match(instructions, /Every later tree step must contain only treeDelta/);
+    assert.match(instructions, /must not repeat treeBase or a full tree snapshot/);
+    assert.match(instructions, /Use \{\} when a step changes no tree visualization fields/);
+  }
+});
+
 test('Gemini step prompt and schema include the linked-list contract', async () => {
   process.env.VITE_GEMINI_API_KEY = 'test-gemini-key';
 
@@ -221,4 +255,33 @@ test('Gemini step prompt and schema include the linked-list contract', async () 
   assert.equal(linkedListSchema.properties.nodes.items.properties.nextId.nullable, true);
   assert.equal(linkedListSchema.properties.headId.nullable, true);
   assert.ok(linkedListSchema.properties.highlightedNodeIds);
+});
+
+test('Gemini prompt and schema require compact tree deltas', async () => {
+  process.env.VITE_GEMINI_API_KEY = 'test-gemini-key';
+
+  const requests: any[] = [];
+  const provider = new GeminiProvider();
+  const privateProvider = provider as unknown as {
+    ai: { models: { generateContent: (request: any) => Promise<{ text: string }> } };
+  };
+  privateProvider.ai.models.generateContent = async (request) => {
+    requests.push(request);
+    return { text: '[]' };
+  };
+
+  await provider.generateSteps(
+    { title: 'Validate Binary Search Tree', statement: 'Validate a binary tree.' } as never,
+    'Use lower and upper bounds.',
+    { input: 'root = [2,1,3]' }
+  );
+
+  assert.match(requests[0].contents, /first tree step's visualState MUST contain treeBase/);
+  assert.match(requests[0].contents, /Every later tree step MUST contain only treeDelta/);
+  const visualProperties = requests[0].config.responseSchema.items.properties.visualState.properties;
+  assert.equal(visualProperties.tree, undefined);
+  assert.ok(visualProperties.treeBase.properties.nodes);
+  assert.equal(visualProperties.treeDelta.properties.activeNodeId.nullable, true);
+  assert.equal(visualProperties.treeDelta.properties.rootId.nullable, true);
+  assert.ok(visualProperties.treeDelta.properties.updateNodes);
 });

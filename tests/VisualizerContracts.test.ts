@@ -10,7 +10,8 @@ import {
   LinkedListVisualizer,
   validateLinkedListState
 } from '../src/components/visualizers/LinkedListVisualizer';
-import { validateTreeState } from '../src/components/visualizers/TreeVisualizer';
+import { TreeVisualizer, validateTreeState } from '../src/components/visualizers/TreeVisualizer';
+import { validateExecutionSteps } from '../src/services/ExecutionStepValidator';
 import { VisualState } from '../src/types';
 
 test('accepts a connected tree and filters unknown traversal markers', () => {
@@ -50,6 +51,35 @@ test('accepts an empty tree without inventing a root', () => {
   if (result.valid) {
     assert.equal(result.rootId, undefined);
   }
+});
+
+test('renders a tree snapshot resolved from a compact trace', () => {
+  const trace = validateExecutionSteps([{
+    id: 'visit-left',
+    line: 1,
+    explanation: 'Visit the left child.',
+    operationType: 'visit-node',
+    variables: {},
+    visualState: {
+      treeBase: {
+        nodes: [
+          { id: 'root', value: 5, children: ['left'] },
+          { id: 'left', value: 2, children: [] }
+        ],
+        rootId: 'root'
+      },
+      treeDelta: { activeNodeId: 'left', highlightNodeIds: ['root', 'left'] }
+    }
+  }]);
+
+  assert.equal(trace.valid, true);
+  const markup = renderToStaticMarkup(React.createElement(TreeVisualizer, {
+    data: trace.steps[0].visualState.tree
+  }));
+
+  assert.match(markup, /Node root/);
+  assert.match(markup, /Node left/);
+  assert.doesNotMatch(markup, /Tree visualization unavailable/);
 });
 
 test('accepts a graph and filters unknown traversal markers', () => {

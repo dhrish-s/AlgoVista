@@ -91,6 +91,27 @@ test('accepts a valid three-step primary trace without falling back', async () =
   assert.equal(fallback.getCalls(), 0);
 });
 
+test('falls back when the primary provider returns a malformed tree base', async () => {
+  const primary = createProvider('openai', () => [{
+    ...validTrace[0],
+    visualState: {
+      treeBase: {
+        nodes: [{ id: 'root', value: 1, children: ['missing'] }],
+        rootId: 'root'
+      },
+      treeDelta: {}
+    }
+  }]);
+  const fallback = createProvider('claude', () => validTrace);
+  const manager = createManager(primary.provider, fallback.provider);
+
+  const response = await manager.generateSteps({}, '', {}, { task: 'steps' });
+
+  assert.equal(response.meta?.provider, 'claude');
+  assert.equal(response.meta?.status, 'fallback');
+  assert.equal(fallback.getCalls(), 1);
+});
+
 test('attributes a final error to the fallback provider that actually failed', async () => {
   const primary = createProvider('openai', () => []);
   const fallback = createProvider('claude', () => {
