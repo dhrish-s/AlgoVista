@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
 import { StructuredProblem, ApproachOption } from '../types';
@@ -63,7 +63,7 @@ export const ProblemSolver: React.FC = () => {
   } = useStore();
 
   const [selectedApproach, setSelectedApproach] = useState<ApproachOption | null>(null);
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const generationControllerRef = useRef<AbortController | null>(null);
 
   // Auto-select first approach when problem loads
   useEffect(() => {
@@ -74,6 +74,14 @@ export const ProblemSolver: React.FC = () => {
       setSelectedApproach(null);
     }
   }, [currentProblem?.id]);
+
+  useEffect(() => {
+    return () => {
+      generationControllerRef.current?.abort();
+      generationControllerRef.current = null;
+      setStepGenerationState(false, null, false);
+    };
+  }, [currentProblem?.id, setStepGenerationState]);
 
   // Playback logic
   useEffect(() => {
@@ -104,14 +112,13 @@ export const ProblemSolver: React.FC = () => {
   const handleGenerateVisualization = async (useUserCode: boolean = false) => {
     if ((!selectedApproach && !useUserCode)) return;
     
-    // Cancel existing
-    if (abortController) {
-      abortController.abort();
-    }
+    generationControllerRef.current?.abort();
     
     const newController = new AbortController();
-    setAbortController(newController);
+    generationControllerRef.current = newController;
 
+    setIsPlaying(false);
+    setSteps([]);
     setStepGenerationState(true, null, false);
     try {
       const testCase = currentProblem.examples[0];
@@ -124,6 +131,10 @@ export const ProblemSolver: React.FC = () => {
       } else {
         throw new Error("No approach selected.");
       }
+
+      if (generationControllerRef.current !== newController || newController.signal.aborted) {
+        return;
+      }
       
       const generationFeedback = (steps as any).generationFeedback;
       const providerMeta = (steps as any).providerMeta;
@@ -132,14 +143,19 @@ export const ProblemSolver: React.FC = () => {
         setProviderStatus(providerMeta.status, providerMeta.message);
       }
       setSteps(steps);
-      setStepIndex(0);
       setIsPlaying(true);
-      setStepGenerationState(false, generationFeedback?.truncated
-        ? "The trace was longer than the 50-step safety limit, so the visualization shows the first reliable portion. Try a smaller example input or simplify the code to see more detail."
-        : null,
-        Boolean(generationFeedback?.truncated)
-      );
+      const rejectedStepCount = Number(generationFeedback?.rejectedStepCount || 0);
+      const traceIsLimited = Boolean(generationFeedback?.truncated || rejectedStepCount > 0);
+      const feedbackMessage = generationFeedback?.truncated
+        ? `The trace was longer than the 50-step safety limit, so the visualization shows the first reliable portion. Try a smaller example input or simplify the code to see more detail.${rejectedStepCount > 0 ? ` ${generationFeedback.message}` : ''}`
+        : rejectedStepCount > 0
+          ? `The provider returned ${rejectedStepCount} malformed execution ${rejectedStepCount === 1 ? 'step' : 'steps'}. AlgoVista skipped ${rejectedStepCount === 1 ? 'it' : 'them'} and is showing ${steps.length} valid ${steps.length === 1 ? 'step' : 'steps'}. ${generationFeedback.message}`
+          : null;
+      setStepGenerationState(false, feedbackMessage, traceIsLimited);
     } catch (e: any) {
+      if (generationControllerRef.current !== newController) {
+        return;
+      }
       if (e.name === 'AbortError' || e.message?.includes('abort')) {
         setStepGenerationState(false, null, false);
         return;
@@ -151,10 +167,23 @@ export const ProblemSolver: React.FC = () => {
         errorMsg = "The provider returned a malformed trace. Regenerate the visualization, or switch providers if this keeps happening.";
       } else if (e.message?.includes('No valid steps found')) {
         errorMsg = "The trace contained no usable execution steps. Try a different approach, smaller test case, or clearer code.";
+      } else if (e.message?.toLowerCase().includes('timed out')) {
+        errorMsg = "Trace generation took too long and was stopped. Try again with a smaller example, or switch AI providers.";
       } else if (e.message?.includes('provider')) {
         errorMsg = "The current AI provider could not generate a trace. Check provider settings or API key, then try again.";
       }
+      if (e.provider) {
+        setCurrentProvider(e.provider);
+      }
+      setProviderStatus(
+        e.status === 'unavailable' ? 'unavailable' : 'failed',
+        typeof e.message === 'string' && e.message.trim() ? e.message : errorMsg
+      );
       setStepGenerationState(false, errorMsg);
+    } finally {
+      if (generationControllerRef.current === newController) {
+        generationControllerRef.current = null;
+      }
     }
   };
 
