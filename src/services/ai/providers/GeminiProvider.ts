@@ -170,6 +170,7 @@ export class GeminiProvider implements AIProvider {
          For hash-based algorithms, visualState MUST use map as an object of key-value pairs.
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
+         For tree algorithms, visualState MUST use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children MUST contain node id strings.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `
       : `Generate a step-by-step execution trace for problem "${problem.title}" using approach "${code}". 
@@ -180,6 +181,7 @@ export class GeminiProvider implements AIProvider {
          For hash-based algorithms, visualState MUST use map as an object of key-value pairs.
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
+         For tree algorithms, visualState MUST use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children MUST contain node id strings.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `;
 
@@ -206,6 +208,25 @@ export class GeminiProvider implements AIProvider {
                   map: { type: Type.OBJECT, additionalProperties: { type: Type.STRING } },
                   stack: { type: Type.ARRAY, items: { type: Type.STRING } },
                   queue: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  tree: {
+                    type: Type.OBJECT,
+                    properties: {
+                      nodes: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING },
+                            value: { type: Type.STRING },
+                            children: { type: Type.ARRAY, items: { type: Type.STRING } }
+                          }
+                        }
+                      },
+                      rootId: { type: Type.STRING },
+                      activeNodeId: { type: Type.STRING },
+                      visitedNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                  },
                   indices: { type: Type.OBJECT, additionalProperties: { type: Type.INTEGER } },
                   highlights: { type: Type.ARRAY, items: { type: Type.INTEGER } }
                 }
