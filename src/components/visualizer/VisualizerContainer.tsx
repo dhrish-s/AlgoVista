@@ -5,6 +5,7 @@ import { ArrayVisualizer, HashMapVisualizer } from '../visualizers/BasicVisualiz
 import { DPTableVisualizer } from '../visualizers/DPTableVisualizer';
 import { StackVisualizer, QueueVisualizer } from '../visualizers/StackQueueVisualizers';
 import { GraphVisualizer } from '../visualizers/GraphVisualizer';
+import { LinkedListVisualizer } from '../visualizers/LinkedListVisualizer';
 import { TreeVisualizer } from '../visualizers/TreeVisualizer';
 import { Zap, Info, Bug, AlertCircle } from 'lucide-react';
 
@@ -22,7 +23,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
 
   const { visualState } = step;
 
-  const hasSupportedState = ['array', 'map', 'stack', 'queue', 'tree', 'graph', 'dpTable']
+  const hasSupportedState = ['array', 'map', 'stack', 'queue', 'tree', 'graph', 'dpTable', 'linkedList']
     .some((key) => visualState[key as keyof typeof visualState] !== undefined);
   const providedStateKeys = Object.keys(visualState);
 
@@ -38,7 +39,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
              <span className="font-bold">Component:</span> VisualizerContainer<br/>
              <span className="font-bold">Issue:</span> No supported visualization for this step<br/>
              <span className="font-bold">State keys:</span> {providedStateKeys.length > 0 ? providedStateKeys.join(', ') : 'none'}<br/>
-             <span className="font-bold">Supported:</span> array, map, stack, queue, tree, graph, dpTable
+             <span className="font-bold">Supported:</span> array, map, stack, queue, tree, graph, dpTable, linkedList
            </p>
         </div>
       )}
@@ -69,6 +70,12 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
       {visualState.dpTable !== undefined && (
         <div className="w-full flex-shrink-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <DPTableVisualizer data={visualState.dpTable} />
+        </div>
+      )}
+
+      {visualState.linkedList !== undefined && (
+        <div className="w-full flex-shrink-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <LinkedListVisualizer data={visualState.linkedList} />
         </div>
       )}
 
