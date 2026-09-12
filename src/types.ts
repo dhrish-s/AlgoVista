@@ -17,12 +17,27 @@ export interface PatternSuggestion {
   confidence: number;
 }
 
+export type VisualPrimitive = string | number | boolean | null;
+
+export interface TreeNodeState {
+  id: string;
+  value: VisualPrimitive;
+  children: string[];
+}
+
+export interface TreeVisualState {
+  nodes: TreeNodeState[];
+  rootId?: string;
+  activeNodeId?: string;
+  visitedNodeIds?: string[];
+}
+
 export interface VisualState {
   array?: unknown[];
   map?: Record<string, unknown>;
   stack?: unknown[];
   queue?: unknown[];
-  tree?: any;
+  tree?: TreeVisualState;
   graph?: any;
   dpTable?: any[][];
   indices?: Record<string, number>;
