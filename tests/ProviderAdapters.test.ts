@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AIProviderManager } from '../src/services/ai/AIProviderManager';
 import { ClaudeProvider, OpenAIProvider } from '../src/services/ai/providers/AlternativeProviders';
+import { GeminiProvider } from '../src/services/ai/providers/GeminiProvider';
 
 type PrivateOpenAIProvider = {
   requestText(messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>): Promise<unknown>;
@@ -155,4 +156,64 @@ test('provider manager preserves structured API details in its final error', asy
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('OpenAI and Claude step instructions include the linked-list contract', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+
+  const originalFetch = globalThis.fetch;
+  const requestBodies: Record<string, any>[] = [];
+  globalThis.fetch = async (input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)));
+    const isClaude = String(input).includes('anthropic.com');
+    return new Response(JSON.stringify(isClaude
+      ? { content: [{ type: 'text', text: '[]' }] }
+      : { choices: [{ message: { content: '[]' } }] }
+    ), { status: 200 });
+  };
+
+  try {
+    const problem = { title: 'Reverse Linked List', statement: 'Reverse a singly linked list.' } as never;
+    await new OpenAIProvider().generateSteps(problem, 'Use three pointers.', {});
+    await new ClaudeProvider().generateSteps(problem, 'Use three pointers.', {});
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const openAIInstructions = requestBodies[0].messages[0].content as string;
+  const claudeInstructions = requestBodies[1].system as string;
+  for (const instructions of [openAIInstructions, claudeInstructions]) {
+    assert.match(instructions, /visualState must use linkedList/);
+    assert.match(instructions, /stable node ids across steps/);
+    assert.match(instructions, /tail must use null explicitly/);
+  }
+});
+
+test('Gemini step prompt and schema include the linked-list contract', async () => {
+  process.env.VITE_GEMINI_API_KEY = 'test-gemini-key';
+
+  const requests: any[] = [];
+  const provider = new GeminiProvider();
+  const privateProvider = provider as unknown as {
+    ai: { models: { generateContent: (request: any) => Promise<{ text: string }> } };
+  };
+  privateProvider.ai.models.generateContent = async (request) => {
+    requests.push(request);
+    return { text: '[]' };
+  };
+
+  await provider.generateSteps(
+    { title: 'Linked List Cycle', statement: 'Detect a cycle.' } as never,
+    'Use slow and fast pointers.',
+    { input: 'head = [3,2,0,-4], pos = 1' }
+  );
+
+  assert.equal(requests.length, 1);
+  assert.match(requests[0].contents, /visualState MUST use linkedList/);
+  assert.match(requests[0].contents, /CURRENT step/);
+  const linkedListSchema = requests[0].config.responseSchema.items.properties.visualState.properties.linkedList;
+  assert.equal(linkedListSchema.properties.nodes.items.properties.nextId.nullable, true);
+  assert.equal(linkedListSchema.properties.headId.nullable, true);
+  assert.ok(linkedListSchema.properties.highlightedNodeIds);
 });

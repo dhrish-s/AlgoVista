@@ -125,6 +125,10 @@ export const buildLinkedListSegments = (state: LinkedListVisualState): LinkedLis
       currentId = node.nextId;
     }
 
+    if (!connectionTargetId && currentId !== null && visited.has(currentId)) {
+      connectionTargetId = currentId;
+    }
+
     if (nodeIds.length > 0) segments.push({ nodeIds, connectionTargetId });
   };
 

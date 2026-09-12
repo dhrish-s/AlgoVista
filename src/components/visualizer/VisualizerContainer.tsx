@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ExecutionStep } from '../../types';
+import { ExecutionStep, VisualState } from '../../types';
 import { ArrayVisualizer, HashMapVisualizer } from '../visualizers/BasicVisualizers';
 import { DPTableVisualizer } from '../visualizers/DPTableVisualizer';
 import { StackVisualizer, QueueVisualizer } from '../visualizers/StackQueueVisualizers';
@@ -13,6 +13,14 @@ interface VisualizerContainerProps {
   step: ExecutionStep | null;
 }
 
+export const SUPPORTED_VISUAL_STATE_KEYS = [
+  'array', 'map', 'stack', 'queue', 'tree', 'graph', 'dpTable', 'linkedList'
+] as const satisfies readonly (keyof VisualState)[];
+
+export const hasSupportedVisualization = (visualState: VisualState): boolean => (
+  SUPPORTED_VISUAL_STATE_KEYS.some((key) => visualState[key] !== undefined)
+);
+
 export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }) => {
   if (!step) return (
     <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-30">
@@ -23,8 +31,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
 
   const { visualState } = step;
 
-  const hasSupportedState = ['array', 'map', 'stack', 'queue', 'tree', 'graph', 'dpTable', 'linkedList']
-    .some((key) => visualState[key as keyof typeof visualState] !== undefined);
+  const hasSupportedState = hasSupportedVisualization(visualState);
   const providedStateKeys = Object.keys(visualState);
 
   return (
