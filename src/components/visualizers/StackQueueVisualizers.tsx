@@ -1,14 +1,27 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerShell } from './VisualizerShell';
+import { VisualizerEmptyState } from './VisualizerEmptyState';
 
 export const StackVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
   const safeData = Array.isArray(data) ? data : [];
+  if (safeData.length === 0) {
+    return (
+      <VisualizerShell title="Stack (LIFO)" icon={<span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}>
+        <VisualizerEmptyState label="Empty Stack" />
+      </VisualizerShell>
+    );
+  }
+
   return (
     <VisualizerShell title="Stack (LIFO)" icon={<span className="h-1.5 w-1.5 rounded-full bg-rose-500" />} className="h-full">
       <div className="flex justify-center">
-      <div className="flex flex-col-reverse justify-end w-32 border-x-2 border-b-2 border-slate-700 h-64 rounded-b-xl px-2 pb-2 gap-1 overflow-hidden">
+      <div className={cn(
+        'flex w-32 flex-col-reverse justify-end gap-1 overflow-hidden rounded-b-xl border-x-2 border-b-2 border-slate-700 px-2 pb-2',
+        safeData.length <= 3 ? 'h-32' : 'h-64'
+      )}>
         <AnimatePresence initial={false}>
           {safeData.map((item, idx) => (
             <motion.div
@@ -22,11 +35,6 @@ export const StackVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
             </motion.div>
           ))}
         </AnimatePresence>
-        {safeData.length === 0 && (
-          <div className="flex-1 flex items-center justify-center text-[10px] text-slate-600 italic">
-            Stack Empty
-          </div>
-        )}
       </div>
       </div>
     </VisualizerShell>
@@ -35,6 +43,14 @@ export const StackVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
 
 export const QueueVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
   const safeData = Array.isArray(data) ? data : [];
+  if (safeData.length === 0) {
+    return (
+      <VisualizerShell title="Queue (FIFO)" icon={<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}>
+        <VisualizerEmptyState label="Empty Queue" />
+      </VisualizerShell>
+    );
+  }
+
   return (
     <VisualizerShell title="Queue (FIFO)" icon={<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}>
       <div className="overflow-x-auto pb-2">
@@ -52,11 +68,6 @@ export const QueueVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
             </motion.div>
           ))}
         </AnimatePresence>
-        {safeData.length === 0 && (
-          <div className="text-[10px] text-slate-600 italic mx-auto">
-            Queue Empty
-          </div>
-        )}
       </div>
       </div>
     </VisualizerShell>

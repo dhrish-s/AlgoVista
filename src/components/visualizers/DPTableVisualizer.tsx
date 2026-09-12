@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerStateMessage } from './VisualizerStateMessage';
 import { VisualizerShell } from './VisualizerShell';
+import { VisualizerEmptyState } from './VisualizerEmptyState';
 
 type DPTableValidationResult =
   | { valid: true; state: DPTableVisualState }
@@ -122,9 +123,9 @@ export const DPTableVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
 
   if (validation.state.values.length === 0) {
     return (
-      <div className="p-5 border border-dashed border-slate-700 rounded-xl text-xs text-slate-500 text-center">
-        Empty DP Table
-      </div>
+      <VisualizerShell title="Dynamic Programming Table" icon={<Table2 className="h-3.5 w-3.5 text-indigo-400" />}>
+        <VisualizerEmptyState label="Empty DP Table" />
+      </VisualizerShell>
     );
   }
 

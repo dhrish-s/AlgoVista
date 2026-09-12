@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerStateMessage } from './VisualizerStateMessage';
 import { VisualizerShell } from './VisualizerShell';
+import { VisualizerEmptyState } from './VisualizerEmptyState';
 
 type GraphValidationResult =
   | { valid: true; state: GraphVisualState }
@@ -124,14 +125,14 @@ export const GraphVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
 
   if (validation.state.nodes.length === 0) {
     return (
-      <div className="p-5 border border-dashed border-slate-700 rounded-xl text-xs text-slate-500 text-center">
-        Empty Graph
-      </div>
+      <VisualizerShell title="Graph" icon={<Waypoints className="h-3.5 w-3.5 text-indigo-400" />}>
+        <VisualizerEmptyState label="Empty Graph" />
+      </VisualizerShell>
     );
   }
 
   const width = 640;
-  const height = 380;
+  const height = validation.state.nodes.length === 1 ? 180 : 380;
   const centerX = width / 2;
   const centerY = height / 2;
   const radius = Math.min(145, 45 + validation.state.nodes.length * 12);

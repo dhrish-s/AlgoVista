@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerShell } from './VisualizerShell';
+import { VisualizerEmptyState } from './VisualizerEmptyState';
 
 interface ArrayVisualizerProps {
   data?: unknown;
@@ -28,9 +29,9 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
 
   if (safeData.length === 0) {
     return (
-      <div className="p-4 border border-dashed border-slate-700 rounded-lg text-slate-500 text-xs text-center italic">
-        Empty Array
-      </div>
+      <VisualizerShell title="Array" icon={<span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />}>
+        <VisualizerEmptyState label="Empty Array" />
+      </VisualizerShell>
     );
   }
 
@@ -104,7 +105,7 @@ export const HashMapVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
   return (
     <VisualizerShell title="Hash Map (Lookups: O(1))" icon={<span className="h-1.5 w-1.5 rounded-full bg-purple-500" />}>
       {entries.length === 0 ? (
-        <div className="text-xs text-slate-600 italic py-2">No entries yet</div>
+        <VisualizerEmptyState label="Empty Hash Map" />
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <AnimatePresence mode="popLayout">

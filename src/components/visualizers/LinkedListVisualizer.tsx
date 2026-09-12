@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerStateMessage } from './VisualizerStateMessage';
 import { VisualizerShell } from './VisualizerShell';
+import { VisualizerEmptyState } from './VisualizerEmptyState';
 
 type LinkedListValidationResult =
   | { valid: true; state: LinkedListVisualState }
@@ -201,9 +202,9 @@ export const LinkedListVisualizer: React.FC<{ data?: unknown }> = ({ data }) => 
 
   if (validation.state.nodes.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-700 p-5 text-center text-xs text-slate-500">
-        Empty Linked List
-      </div>
+      <VisualizerShell title="Linked List" icon={<ListRestart className="h-3.5 w-3.5 text-indigo-400" />}>
+        <VisualizerEmptyState label="Empty Linked List" />
+      </VisualizerShell>
     );
   }
 

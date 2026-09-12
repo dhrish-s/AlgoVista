@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
 import { VisualizerStateMessage } from './VisualizerStateMessage';
 import { VisualizerShell } from './VisualizerShell';
+import { VisualizerEmptyState } from './VisualizerEmptyState';
 
 type TreeValidationResult =
   | { valid: true; state: TreeVisualState; rootId?: string }
@@ -176,9 +177,9 @@ export const TreeVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
 
   if (!validation.rootId) {
     return (
-      <div className="p-5 border border-dashed border-slate-700 rounded-xl text-xs text-slate-500 text-center">
-        Empty Tree
-      </div>
+      <VisualizerShell title="Tree" icon={<Network className="h-3.5 w-3.5 text-indigo-400" />}>
+        <VisualizerEmptyState label="Empty Tree" />
+      </VisualizerShell>
     );
   }
 
