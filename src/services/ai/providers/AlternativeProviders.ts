@@ -33,6 +33,7 @@ Do not omit complexity.time or complexity.space.`;
 
 const STEP_INSTRUCTIONS = `Return only a JSON array of execution steps.
 Every step must include: id string, line number, explanation string, operationType string, variables object, visualState object.
+operationType must be one of: init, compare, move-pointer, swap, insert-map, lookup-map, push-stack, pop-stack, enqueue, dequeue, visit-node, update-dp, recurse-call, recurse-return, window-expand, window-shrink, return, found, assign.
 For array algorithms, visualState must use array for values, indices for named numeric pointers, and highlights for numeric indices.
 For hash-based algorithms, visualState must use map as an object of key-value pairs.
 For stack algorithms, visualState must use stack as an array ordered from bottom to top.

@@ -187,6 +187,7 @@ test('OpenAI and Claude step instructions include the linked-list contract', asy
     assert.match(instructions, /visualState must use linkedList/);
     assert.match(instructions, /stable node ids across steps/);
     assert.match(instructions, /tail must use null explicitly/);
+    assert.match(instructions, /operationType must be one of: init, compare, move-pointer/);
   }
 });
 
@@ -212,6 +213,10 @@ test('Gemini step prompt and schema include the linked-list contract', async () 
   assert.equal(requests.length, 1);
   assert.match(requests[0].contents, /visualState MUST use linkedList/);
   assert.match(requests[0].contents, /CURRENT step/);
+  assert.match(requests[0].contents, /operationType MUST be one of: init, compare, move-pointer/);
+  const operationTypes = requests[0].config.responseSchema.items.properties.operationType.enum;
+  assert.ok(operationTypes.includes('move-pointer'));
+  assert.ok(operationTypes.includes('return'));
   const linkedListSchema = requests[0].config.responseSchema.items.properties.visualState.properties.linkedList;
   assert.equal(linkedListSchema.properties.nodes.items.properties.nextId.nullable, true);
   assert.equal(linkedListSchema.properties.headId.nullable, true);

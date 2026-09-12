@@ -166,6 +166,7 @@ export class GeminiProvider implements AIProvider {
          ONLY visualize their actual logic.
          LIMIT the trace to EXACTLY ${MAX_STEPS} logical steps maximum. Do not exceed this.
          Every step MUST have: id (string), line (number), explanation (string), operationType (string), variables (object), visualState (object).
+         operationType MUST be one of: init, compare, move-pointer, swap, insert-map, lookup-map, push-stack, pop-stack, enqueue, dequeue, visit-node, update-dp, recurse-call, recurse-return, window-expand, window-shrink, return, found, assign.
          For array algorithms, visualState MUST use array for values, indices for named numeric pointers, and highlights for numeric indices.
          For hash-based algorithms, visualState MUST use map as an object of key-value pairs.
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
@@ -180,6 +181,7 @@ export class GeminiProvider implements AIProvider {
          Input: ${JSON.stringify(testCase.input)}.
          LIMIT the trace to EXACTLY ${MAX_STEPS} logical steps maximum. Do not exceed this.
          Every step MUST have: id (string), line (number), explanation (string), operationType (string), variables (object), visualState (object).
+         operationType MUST be one of: init, compare, move-pointer, swap, insert-map, lookup-map, push-stack, pop-stack, enqueue, dequeue, visit-node, update-dp, recurse-call, recurse-return, window-expand, window-shrink, return, found, assign.
          For array algorithms, visualState MUST use array for values, indices for named numeric pointers, and highlights for numeric indices.
          For hash-based algorithms, visualState MUST use map as an object of key-value pairs.
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
@@ -205,7 +207,15 @@ export class GeminiProvider implements AIProvider {
               id: { type: Type.STRING },
               line: { type: Type.NUMBER },
               explanation: { type: Type.STRING },
-              operationType: { type: Type.STRING },
+              operationType: {
+                type: Type.STRING,
+                enum: [
+                  'init', 'compare', 'move-pointer', 'swap', 'insert-map', 'lookup-map',
+                  'push-stack', 'pop-stack', 'enqueue', 'dequeue', 'visit-node', 'update-dp',
+                  'recurse-call', 'recurse-return', 'window-expand', 'window-shrink', 'return',
+                  'found', 'assign'
+                ]
+              },
               variables: { type: Type.OBJECT, additionalProperties: { type: Type.STRING } },
               visualState: {
                 type: Type.OBJECT,
