@@ -41,6 +41,7 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
           const activePointers = Object.entries(safePointers)
             .filter(([_, pos]) => pos === idx)
             .map(([name]) => name);
+          const isActive = activePointers.length > 0;
 
           return (
             <div key={idx} className="relative flex flex-col items-center">
@@ -67,14 +68,13 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
                 layout
                 initial={false}
                 animate={{
-                  scale: isHighlighted ? 1.1 : 1,
-                  backgroundColor: isHighlighted ? '#4f46e5' : '#1e293b',
-                  borderColor: isHighlighted ? '#6366f1' : '#334155',
+                  scale: isActive ? 1.08 : isHighlighted ? 1.05 : 1,
                 }}
                 className={cn(
-                  "w-12 h-12 flex items-center justify-center rounded-lg border-2 text-sm font-mono font-bold transition-shadow shadow-md",
-                  isHighlighted && "shadow-indigo-500/40 text-white",
-                  !isHighlighted && "text-slate-300"
+                  'w-12 h-12 flex items-center justify-center rounded-lg border-2 text-sm font-mono font-bold transition-colors shadow-md',
+                  isActive && 'border-indigo-300 bg-indigo-500 text-white shadow-indigo-500/30',
+                  !isActive && isHighlighted && 'border-emerald-500 bg-emerald-500/15 text-emerald-200',
+                  !isActive && !isHighlighted && 'border-slate-700 bg-slate-900 text-slate-300'
                 )}
               >
                 {formatVisualValue(item)}

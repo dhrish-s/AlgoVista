@@ -168,7 +168,7 @@ export const GraphVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
                 y1={source.y}
                 x2={target.x}
                 y2={target.y}
-                className={cn(isActive ? 'stroke-amber-400' : 'stroke-slate-600')}
+                className={cn(isActive ? 'stroke-indigo-400' : 'stroke-slate-600')}
                 strokeWidth={isActive ? 3 : 2}
                 markerEnd={validation.state.directed ? `url(#${arrowId})` : undefined}
               />

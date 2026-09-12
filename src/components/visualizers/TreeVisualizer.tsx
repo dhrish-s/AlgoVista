@@ -134,7 +134,7 @@ const TreeBranch: React.FC<{
         className={cn(
           'min-w-12 h-12 px-3 rounded-full border-2 flex items-center justify-center font-mono text-xs font-bold shadow-lg',
           isActive && 'bg-indigo-500 border-indigo-300 text-white shadow-indigo-500/30',
-          !isActive && isVisited && 'bg-emerald-500/20 border-emerald-500 text-emerald-200',
+          !isActive && isVisited && 'bg-emerald-500/15 border-emerald-500 text-emerald-200',
           !isActive && !isVisited && 'bg-slate-900 border-slate-700 text-slate-200'
         )}
         title={`Node ${node.id}`}

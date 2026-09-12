@@ -19,7 +19,7 @@ export const StackVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
               initial={{ y: -50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ x: 50, opacity: 0 }}
-              className="w-full py-2 bg-indigo-600 rounded border border-indigo-400 flex items-center justify-center text-white text-xs font-mono font-bold shadow-lg shadow-indigo-500/20"
+              className="w-full rounded border border-slate-700 bg-slate-900 py-2 text-center font-mono text-xs font-bold text-slate-200 shadow-md"
             >
               {formatVisualValue(item)}
             </motion.div>
@@ -51,7 +51,7 @@ export const QueueVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 20, opacity: 0 }}
-              className="w-10 h-10 bg-emerald-600 rounded border border-emerald-400 flex items-center justify-center text-white text-xs font-mono font-bold"
+              className="flex h-10 w-10 items-center justify-center rounded border border-slate-700 bg-slate-900 font-mono text-xs font-bold text-slate-200 shadow-md"
             >
               {formatVisualValue(item)}
             </motion.div>
