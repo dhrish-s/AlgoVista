@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ExecutionStep } from '../../types';
 import { ArrayVisualizer, HashMapVisualizer } from '../visualizers/BasicVisualizers';
 import { StackVisualizer, QueueVisualizer } from '../visualizers/StackQueueVisualizers';
+import { GraphVisualizer } from '../visualizers/GraphVisualizer';
 import { TreeVisualizer } from '../visualizers/TreeVisualizer';
 import { Zap, Info, Bug, AlertCircle } from 'lucide-react';
 
@@ -20,7 +21,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
 
   const { visualState } = step;
 
-  const hasSupportedState = ['array', 'map', 'stack', 'queue', 'tree']
+  const hasSupportedState = ['array', 'map', 'stack', 'queue', 'tree', 'graph']
     .some((key) => visualState[key as keyof typeof visualState] !== undefined);
   const providedStateKeys = Object.keys(visualState);
 
@@ -36,7 +37,7 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
              <span className="font-bold">Component:</span> VisualizerContainer<br/>
              <span className="font-bold">Issue:</span> No supported visualization for this step<br/>
              <span className="font-bold">State keys:</span> {providedStateKeys.length > 0 ? providedStateKeys.join(', ') : 'none'}<br/>
-             <span className="font-bold">Supported:</span> array, map, stack, queue, tree
+             <span className="font-bold">Supported:</span> array, map, stack, queue, tree, graph
            </p>
         </div>
       )}
@@ -55,6 +56,12 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
       {visualState.tree !== undefined && (
         <div className="w-full flex-shrink-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <TreeVisualizer data={visualState.tree} />
+        </div>
+      )}
+
+      {visualState.graph !== undefined && (
+        <div className="w-full flex-shrink-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <GraphVisualizer data={visualState.graph} />
         </div>
       )}
 
