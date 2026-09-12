@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { StructuredProblem, UserState, ExecutionStep } from '../types';
 import { AIProviderID, AIProviderSettings } from '../services/ai/types';
 import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider } from '../services/ai/providerConfig';
+import { ALGOVISTA_STORAGE_VERSION, migratePersistedState } from './persistedStateMigration';
 
 interface AppState {
   // AI Settings
@@ -173,7 +174,9 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'algovista-storage',
+      version: ALGOVISTA_STORAGE_VERSION,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState, version) => migratePersistedState(persistedState, version) as AppState,
       partialize: (state) => ({
         currentProblem: state.currentProblem,
         userCode: state.userCode,
