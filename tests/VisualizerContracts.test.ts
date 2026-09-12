@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { validateDPTableState } from '../src/components/visualizers/DPTableVisualizer';
 import { validateGraphState } from '../src/components/visualizers/GraphVisualizer';
 import { validateTreeState } from '../src/components/visualizers/TreeVisualizer';
 
@@ -88,5 +89,44 @@ test('rejects malformed graph traversal markers', () => {
 
 test('accepts an empty graph', () => {
   const result = validateGraphState({ nodes: [], edges: [] });
+  assert.equal(result.valid, true);
+});
+
+test('accepts a rectangular DP table with labels and markers', () => {
+  const result = validateDPTableState({
+    values: [[0, 1, 1], [0, 1, 2]],
+    rowLabels: ['none', 'a'],
+    columnLabels: [0, 1, 2],
+    activeCell: { row: 1, column: 2 },
+    highlightedCells: [{ row: 1, column: 1 }]
+  });
+
+  assert.equal(result.valid, true);
+  if (result.valid) {
+    assert.deepEqual(result.state.activeCell, { row: 1, column: 2 });
+  }
+});
+
+test('rejects DP table rows with inconsistent lengths', () => {
+  const result = validateDPTableState({ values: [[0, 1], [0]] });
+  assert.equal(result.valid, false);
+  if (!result.valid) {
+    assert.match(result.message, /same length/);
+  }
+});
+
+test('rejects DP cell markers outside the table', () => {
+  const result = validateDPTableState({
+    values: [[0]],
+    activeCell: { row: 1, column: 0 }
+  });
+  assert.equal(result.valid, false);
+  if (!result.valid) {
+    assert.match(result.message, /outside the DP table/);
+  }
+});
+
+test('accepts an empty DP table', () => {
+  const result = validateDPTableState({ values: [] });
   assert.equal(result.valid, true);
 });
