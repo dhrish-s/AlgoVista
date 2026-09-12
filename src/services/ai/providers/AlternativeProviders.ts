@@ -49,6 +49,24 @@ const asAbortError = () => {
   return err;
 };
 
+const extractApiErrorMessage = (bodyText: string): string => {
+  try {
+    const body = JSON.parse(bodyText);
+    const message = body?.error?.message ?? body?.message;
+    return typeof message === 'string' ? message.trim() : '';
+  } catch {
+    return '';
+  }
+};
+
+const asProviderApiError = (fallbackMessage: string, status: number, bodyText: string) => {
+  const detail = extractApiErrorMessage(bodyText);
+  const err: any = new Error(detail ? `${fallbackMessage} API error: ${detail}` : fallbackMessage);
+  err.name = 'ProviderAPIError';
+  err.status = status;
+  return err;
+};
+
 const safeUnsupported = <T>(providerId: AIProviderID, data: T): AIResponse<T> => ({
   data,
   meta: {
@@ -79,7 +97,8 @@ export class OpenAIProvider implements AIProvider {
 
     if (options?.signal?.aborted) throw asAbortError();
     if (!response.ok) {
-      throw new Error(this.safeHttpError(response.status));
+      const bodyText = await response.text();
+      throw asProviderApiError(this.safeHttpError(response.status), response.status, bodyText);
     }
 
     const json = await response.json();
@@ -231,7 +250,7 @@ export class ClaudeProvider implements AIProvider {
     });
 
     if (!response.ok) {
-      throw new Error(this.safeHttpError(response.status, bodyText));
+      throw asProviderApiError(this.safeHttpError(response.status), response.status, bodyText);
     }
 
     const json = JSON.parse(bodyText);
@@ -308,9 +327,9 @@ New user message: ${userMessage}`,
     };
   }
 
-  private safeHttpError(status: number, bodyText: string): string {
+  private safeHttpError(status: number): string {
     if (status === 401 || status === 403) return 'Claude authentication failed. Check the API key.';
-    if (status === 404) return `Claude Messages API returned 404. The endpoint is correct; check browser-direct access, API key permissions, and the configured model. Response body: ${bodyText}`;
+    if (status === 404) return 'Claude Messages API returned 404. The endpoint is correct; check browser-direct access, API key permissions, and the configured model.';
     if (status === 429) return 'Claude rate limit reached. Try again later or use fallback.';
     if (status >= 500) return 'Claude service is temporarily unavailable.';
     return 'Claude request failed.';

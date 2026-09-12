@@ -210,6 +210,9 @@ export class AIProviderManager {
 
   private getFriendlyProviderFailure(providerId: AIProviderID, error: any): string {
     const raw = String(error?.message || '').toLowerCase();
+    if (error?.name === 'ProviderAPIError') {
+      return error.message;
+    }
     if (raw.includes('timed out')) {
       return `${providerId} provider timed out before completing the request. Try again or switch providers.`;
     }
