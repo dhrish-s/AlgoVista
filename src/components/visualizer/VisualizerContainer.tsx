@@ -7,7 +7,8 @@ import { StackVisualizer, QueueVisualizer } from '../visualizers/StackQueueVisua
 import { GraphVisualizer } from '../visualizers/GraphVisualizer';
 import { LinkedListVisualizer } from '../visualizers/LinkedListVisualizer';
 import { TreeVisualizer } from '../visualizers/TreeVisualizer';
-import { Zap, Info, Bug, AlertCircle } from 'lucide-react';
+import { VisualizerStateMessage } from '../visualizers/VisualizerStateMessage';
+import { Zap, Info, Bug } from 'lucide-react';
 
 interface VisualizerContainerProps {
   step: ExecutionStep | null;
@@ -37,18 +38,11 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
   return (
     <div className="w-full flex flex-col items-center justify-center gap-10 p-8 h-full">
       {!hasSupportedState && (
-        <div className="flex flex-col items-center p-8 bg-rose-500/5 border border-rose-500/20 rounded-xl max-w-md w-full">
-           <div className="flex items-center gap-2 mb-2 text-rose-400">
-              <AlertCircle className="w-4 h-4" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Safety Check Failed</span>
-           </div>
-           <p className="text-[11px] text-rose-500 text-center leading-relaxed">
-             <span className="font-bold">Component:</span> VisualizerContainer<br/>
-             <span className="font-bold">Issue:</span> No supported visualization for this step<br/>
-             <span className="font-bold">State keys:</span> {providedStateKeys.length > 0 ? providedStateKeys.join(', ') : 'none'}<br/>
-             <span className="font-bold">Supported:</span> array, map, stack, queue, tree, graph, dpTable, linkedList
-           </p>
-        </div>
+        <VisualizerStateMessage title="Visualization unavailable" tone="error">
+          <span className="font-bold">Issue:</span> No supported visualization for this step<br/>
+          <span className="font-bold">State keys:</span> {providedStateKeys.length > 0 ? providedStateKeys.join(', ') : 'none'}<br/>
+          <span className="font-bold">Supported:</span> array, map, stack, queue, tree, graph, dpTable, linkedList
+        </VisualizerStateMessage>
       )}
 
       {/* Array Display */}

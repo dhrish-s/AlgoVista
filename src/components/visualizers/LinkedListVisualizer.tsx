@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { LinkedListNodeState, LinkedListVisualState, VisualPrimitive } from '../../types';
 import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
+import { VisualizerStateMessage } from './VisualizerStateMessage';
 
 type LinkedListValidationResult =
   | { valid: true; state: LinkedListVisualState }
@@ -191,10 +192,9 @@ export const LinkedListVisualizer: React.FC<{ data?: unknown }> = ({ data }) => 
   const validation = validateLinkedListState(data);
   if ('message' in validation) {
     return (
-      <div className="w-full max-w-xl rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 text-center">
-        <p className="text-xs font-bold text-amber-300">Linked-list visualization unavailable</p>
-        <p className="mt-1 text-[11px] text-amber-200/70">{validation.message}</p>
-      </div>
+      <VisualizerStateMessage title="Linked-list visualization unavailable">
+        {validation.message}
+      </VisualizerStateMessage>
     );
   }
 

@@ -3,6 +3,7 @@ import { Waypoints } from 'lucide-react';
 import { GraphNodeState, GraphVisualState } from '../../types';
 import { cn } from '../../lib/utils';
 import { formatVisualValue } from '../../lib/formatVisualValue';
+import { VisualizerStateMessage } from './VisualizerStateMessage';
 
 type GraphValidationResult =
   | { valid: true; state: GraphVisualState }
@@ -114,10 +115,9 @@ export const GraphVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
   const arrowId = React.useId().replace(/:/g, '');
   if ('message' in validation) {
     return (
-      <div className="w-full max-w-xl p-5 border border-amber-500/30 bg-amber-500/5 rounded-xl text-center">
-        <p className="text-xs font-bold text-amber-300">Graph visualization unavailable</p>
-        <p className="mt-1 text-[11px] text-amber-200/70">{validation.message}</p>
-      </div>
+      <VisualizerStateMessage title="Graph visualization unavailable">
+        {validation.message}
+      </VisualizerStateMessage>
     );
   }
 
