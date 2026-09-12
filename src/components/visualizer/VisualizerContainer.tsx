@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ExecutionStep } from '../../types';
 import { ArrayVisualizer, HashMapVisualizer } from '../visualizers/BasicVisualizers';
 import { StackVisualizer, QueueVisualizer } from '../visualizers/StackQueueVisualizers';
+import { TreeVisualizer } from '../visualizers/TreeVisualizer';
 import { Zap, Info, Bug, AlertCircle } from 'lucide-react';
 
 interface VisualizerContainerProps {
@@ -19,12 +20,13 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
 
   const { visualState } = step;
 
-  // Simple validation check as requested by safety rules
-  const hasValidData = visualState.array || visualState.map || visualState.stack || visualState.queue;
+  const hasSupportedState = ['array', 'map', 'stack', 'queue', 'tree']
+    .some((key) => visualState[key as keyof typeof visualState] !== undefined);
+  const providedStateKeys = Object.keys(visualState);
 
   return (
     <div className="w-full flex flex-col items-center justify-center gap-10 p-8 h-full">
-      {!hasValidData && (
+      {!hasSupportedState && (
         <div className="flex flex-col items-center p-8 bg-rose-500/5 border border-rose-500/20 rounded-xl max-w-md w-full">
            <div className="flex items-center gap-2 mb-2 text-rose-400">
               <AlertCircle className="w-4 h-4" />
@@ -32,9 +34,9 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
            </div>
            <p className="text-[11px] text-rose-500 text-center leading-relaxed">
              <span className="font-bold">Component:</span> VisualizerContainer<br/>
-             <span className="font-bold">Issue:</span> No visualizable data found in current state<br/>
-             <span className="font-bold">Cause:</span> Execution step missing visualState keys<br/>
-             <span className="font-bold">Fix:</span> Update generateSteps() to include array, map, stack or queue.
+             <span className="font-bold">Issue:</span> No supported visualization for this step<br/>
+             <span className="font-bold">State keys:</span> {providedStateKeys.length > 0 ? providedStateKeys.join(', ') : 'none'}<br/>
+             <span className="font-bold">Supported:</span> array, map, stack, queue, tree
            </p>
         </div>
       )}
@@ -47,6 +49,12 @@ export const VisualizerContainer: React.FC<VisualizerContainerProps> = ({ step }
              highlights={visualState.highlights}
              pointers={visualState.indices}
            />
+        </div>
+      )}
+
+      {visualState.tree !== undefined && (
+        <div className="w-full flex-shrink-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TreeVisualizer data={visualState.tree} />
         </div>
       )}
 
