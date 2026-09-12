@@ -39,6 +39,7 @@ For stack algorithms, visualState must use stack as an array ordered from bottom
 For queue algorithms, visualState must use queue as an array ordered from front to back.
 For tree algorithms, visualState must use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children must contain node id strings.
 For graph algorithms, visualState must use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints must contain node id strings.
+For dynamic programming algorithms, visualState must use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
 Use no more than 50 logical steps. Do not include markdown.`;
 
 const COACH_INSTRUCTIONS = `You are AlgoVista's reasoning coach.

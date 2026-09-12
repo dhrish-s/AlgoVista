@@ -172,6 +172,7 @@ export class GeminiProvider implements AIProvider {
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
          For tree algorithms, visualState MUST use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children MUST contain node id strings.
          For graph algorithms, visualState MUST use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints MUST contain node id strings.
+         For dynamic programming algorithms, visualState MUST use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `
       : `Generate a step-by-step execution trace for problem "${problem.title}" using approach "${code}". 
@@ -184,6 +185,7 @@ export class GeminiProvider implements AIProvider {
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
          For tree algorithms, visualState MUST use tree with nodes shaped as { id, value, children }, rootId, activeNodeId, and visitedNodeIds. Node children MUST contain node id strings.
          For graph algorithms, visualState MUST use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints MUST contain node id strings.
+         For dynamic programming algorithms, visualState MUST use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `;
 
@@ -258,6 +260,37 @@ export class GeminiProvider implements AIProvider {
                       activeNodeId: { type: Type.STRING },
                       activeEdgeId: { type: Type.STRING },
                       visitedNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                  },
+                  dpTable: {
+                    type: Type.OBJECT,
+                    properties: {
+                      values: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.ARRAY,
+                          items: { type: Type.STRING }
+                        }
+                      },
+                      rowLabels: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      columnLabels: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      activeCell: {
+                        type: Type.OBJECT,
+                        properties: {
+                          row: { type: Type.INTEGER },
+                          column: { type: Type.INTEGER }
+                        }
+                      },
+                      highlightedCells: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            row: { type: Type.INTEGER },
+                            column: { type: Type.INTEGER }
+                          }
+                        }
+                      }
                     }
                   },
                   indices: { type: Type.OBJECT, additionalProperties: { type: Type.INTEGER } },
