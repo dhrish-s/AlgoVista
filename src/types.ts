@@ -32,6 +32,27 @@ export interface TreeVisualState {
   visitedNodeIds?: string[];
 }
 
+export interface TreeTraceBase {
+  nodes: TreeNodeState[];
+  rootId?: string;
+}
+
+export interface TreeNodeUpdate {
+  id: string;
+  value?: VisualPrimitive;
+  children?: string[];
+}
+
+export interface TreeVisualDelta {
+  activeNodeId?: string | null;
+  highlightNodeIds?: string[];
+  unhighlightNodeIds?: string[];
+  rootId?: string | null;
+  addNodes?: TreeNodeState[];
+  updateNodes?: TreeNodeUpdate[];
+  removeNodeIds?: string[];
+}
+
 export interface GraphNodeState {
   id: string;
   value: VisualPrimitive;
@@ -85,6 +106,8 @@ export interface VisualState {
   stack?: unknown[];
   queue?: unknown[];
   tree?: TreeVisualState;
+  treeBase?: TreeTraceBase;
+  treeDelta?: TreeVisualDelta;
   graph?: GraphVisualState;
   dpTable?: DPTableVisualState;
   linkedList?: LinkedListVisualState;
