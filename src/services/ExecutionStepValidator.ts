@@ -1,4 +1,5 @@
 import { ExecutionStep, OperationType } from '../types';
+import { resolveTreeTraceSteps } from './TreeTraceValidator';
 import { normalizeVisualState } from './VisualStateNormalizer';
 
 export interface StepValidationResult {
@@ -31,21 +32,14 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
 
   const validSteps: ExecutionStep[] = [];
   const errors: string[] = [];
+  let isTruncated = false;
 
   for (let i = 0; i < rawSteps.length; i++) {
     const rawStep = rawSteps[i];
 
     if (validSteps.length >= MAX_STEPS) {
-      return {
-        valid: true,
-        steps: validSteps,
-        isTruncated: true,
-        rejectedStepCount: errors.length,
-        error: `Trace truncated from ${rawSteps.length} steps to ${MAX_STEPS} max limit`,
-        warning: errors.length > 0
-          ? `Skipped ${errors.length} malformed steps before reaching the trace limit: ${errors.slice(0, 3).join('; ')}`
-          : undefined
-      };
+      isTruncated = true;
+      break;
     }
 
     if (!rawStep || typeof rawStep !== 'object') {
@@ -93,11 +87,14 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
     });
   }
 
-  if (validSteps.length === 0) {
+  const treeValidation = resolveTreeTraceSteps(validSteps);
+  errors.push(...treeValidation.errors);
+
+  if (treeValidation.steps.length === 0) {
     return {
       valid: false,
       steps: [],
-      isTruncated: false,
+      isTruncated,
       rejectedStepCount: errors.length,
       error: `No valid steps found. Errors: ${errors.slice(0, 3).join('; ')}`
     };
@@ -105,9 +102,12 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
 
   return {
     valid: true,
-    steps: validSteps,
-    isTruncated: false,
+    steps: treeValidation.steps,
+    isTruncated,
     rejectedStepCount: errors.length,
+    error: isTruncated
+      ? `Trace truncated from ${rawSteps.length} steps to ${MAX_STEPS} max limit`
+      : undefined,
     warning: errors.length > 0
       ? `Skipped ${errors.length} malformed steps: ${errors.slice(0, 3).join('; ')}`
       : undefined
