@@ -92,6 +92,11 @@ export const validateGraphState = (data: unknown): GraphValidationResult => {
   )) {
     return { valid: false, message: 'Graph visitedNodeIds must be a string array.' };
   }
+  if (data.traversedEdgeIds !== undefined && (
+    !Array.isArray(data.traversedEdgeIds) || !data.traversedEdgeIds.every((id) => typeof id === 'string')
+  )) {
+    return { valid: false, message: 'Graph traversedEdgeIds must be a string array.' };
+  }
 
   return {
     valid: true,
@@ -107,6 +112,9 @@ export const validateGraphState = (data: unknown): GraphValidationResult => {
         : undefined,
       visitedNodeIds: Array.isArray(data.visitedNodeIds)
         ? data.visitedNodeIds.filter((id) => nodeIds.has(id))
+        : [],
+      traversedEdgeIds: Array.isArray(data.traversedEdgeIds)
+        ? data.traversedEdgeIds.filter((id) => edgeIds.has(id))
         : []
     }
   };
@@ -146,6 +154,7 @@ export const GraphVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
     }];
   }));
   const visited = new Set(validation.state.visitedNodeIds);
+  const traversed = new Set(validation.state.traversedEdgeIds);
 
   return (
     <VisualizerShell
@@ -163,6 +172,7 @@ export const GraphVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
           const source = positions.get(edge.source) as { x: number; y: number };
           const target = positions.get(edge.target) as { x: number; y: number };
           const isActive = edge.id === validation.state.activeEdgeId;
+          const isTraversed = traversed.has(edge.id);
           return (
             <g key={edge.id}>
               <line
@@ -170,7 +180,11 @@ export const GraphVisualizer: React.FC<{ data?: unknown }> = ({ data }) => {
                 y1={source.y}
                 x2={target.x}
                 y2={target.y}
-                className={cn(isActive ? 'stroke-indigo-400' : 'stroke-slate-600')}
+                className={cn(
+                  isActive && 'stroke-indigo-400',
+                  !isActive && isTraversed && 'stroke-emerald-500',
+                  !isActive && !isTraversed && 'stroke-slate-600'
+                )}
                 strokeWidth={isActive ? 3 : 2}
                 markerEnd={validation.state.directed ? `url(#${arrowId})` : undefined}
               />
