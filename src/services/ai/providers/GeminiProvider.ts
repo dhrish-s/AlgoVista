@@ -172,7 +172,7 @@ export class GeminiProvider implements AIProvider {
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
          For tree algorithms, use a compact base-and-delta trace. The first tree step's visualState MUST contain treeBase with nodes shaped as { id, value, children } and rootId, plus treeDelta. Every later tree step MUST contain only treeDelta and MUST NOT repeat treeBase or a full tree snapshot. A treeDelta may use activeNodeId (string or null), highlightNodeIds, unhighlightNodeIds, rootId (string or null), addNodes, updateNodes shaped as { id, value?, children? }, and removeNodeIds. Use {} when a step changes no tree visualization fields. Keep node ids stable, make every reference valid in the resulting tree, and include structural fields only when they actually change.
-         For graph algorithms, visualState MUST use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints MUST contain node id strings.
+         For graph algorithms, use a compact base-and-delta trace with no root concept. The first graph step's visualState MUST contain graphBase with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, and directed, plus graphDelta. Every later graph step MUST contain only graphDelta and MUST NOT repeat graphBase or a full graph snapshot. A graphDelta may use activeNodeId or activeEdgeId (string or null), visitNodeIds, unvisitNodeIds, traverseEdgeIds, untraverseEdgeIds, addNodes, removeNodeIds, addEdges, and removeEdgeIds. Most BFS, DFS, and path-finding steps should include only newly visited nodes, newly traversed edges, and active ids. Use structural fields only when the algorithm actually mutates the graph, and use {} when nothing changes visually. Keep node and edge ids stable and make every reference valid in the resulting graph. Cycles and disconnected components are valid graph structures.
          For dynamic programming algorithms, visualState MUST use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
          For linked-list algorithms and pointer traversal or manipulation over a linked list, visualState MUST use linkedList with nodes shaped as { id, value, nextId }, headId, activeNodeId, and highlightedNodeIds. Every node MUST include nextId as a node id string or null, and each null-terminated chain's tail MUST use null explicitly. Use stable node ids across steps, keep headId and nextId links synchronized with the CURRENT step after its described operations, and highlight the nodes relevant to that step. This applies to problems such as Reverse Linked List, Merge Two Sorted Lists, Remove Nth Node From End of List, Middle of the Linked List, Linked List Cycle, and Palindrome Linked List. Use another visualization type when a linked list is not the algorithm's meaningful state.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
@@ -187,7 +187,7 @@ export class GeminiProvider implements AIProvider {
          For stack algorithms, visualState MUST use stack as an array ordered from bottom to top.
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
          For tree algorithms, use a compact base-and-delta trace. The first tree step's visualState MUST contain treeBase with nodes shaped as { id, value, children } and rootId, plus treeDelta. Every later tree step MUST contain only treeDelta and MUST NOT repeat treeBase or a full tree snapshot. A treeDelta may use activeNodeId (string or null), highlightNodeIds, unhighlightNodeIds, rootId (string or null), addNodes, updateNodes shaped as { id, value?, children? }, and removeNodeIds. Use {} when a step changes no tree visualization fields. Keep node ids stable, make every reference valid in the resulting tree, and include structural fields only when they actually change.
-         For graph algorithms, visualState MUST use graph with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, directed, activeNodeId, activeEdgeId, and visitedNodeIds. Edge endpoints MUST contain node id strings.
+         For graph algorithms, use a compact base-and-delta trace with no root concept. The first graph step's visualState MUST contain graphBase with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, and directed, plus graphDelta. Every later graph step MUST contain only graphDelta and MUST NOT repeat graphBase or a full graph snapshot. A graphDelta may use activeNodeId or activeEdgeId (string or null), visitNodeIds, unvisitNodeIds, traverseEdgeIds, untraverseEdgeIds, addNodes, removeNodeIds, addEdges, and removeEdgeIds. Most BFS, DFS, and path-finding steps should include only newly visited nodes, newly traversed edges, and active ids. Use structural fields only when the algorithm actually mutates the graph, and use {} when nothing changes visually. Keep node and edge ids stable and make every reference valid in the resulting graph. Cycles and disconnected components are valid graph structures.
          For dynamic programming algorithms, visualState MUST use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
          For linked-list algorithms and pointer traversal or manipulation over a linked list, visualState MUST use linkedList with nodes shaped as { id, value, nextId }, headId, activeNodeId, and highlightedNodeIds. Every node MUST include nextId as a node id string or null, and each null-terminated chain's tail MUST use null explicitly. Use stable node ids across steps, keep headId and nextId links synchronized with the CURRENT step after its described operations, and highlight the nodes relevant to that step. This applies to problems such as Reverse Linked List, Merge Two Sorted Lists, Remove Nth Node From End of List, Middle of the Linked List, Linked List Cycle, and Palindrome Linked List. Use another visualization type when a linked list is not the algorithm's meaningful state.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
@@ -273,7 +273,7 @@ export class GeminiProvider implements AIProvider {
                       removeNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
                     }
                   },
-                  graph: {
+                  graphBase: {
                     type: Type.OBJECT,
                     properties: {
                       nodes: {
@@ -298,10 +298,42 @@ export class GeminiProvider implements AIProvider {
                           }
                         }
                       },
-                      directed: { type: Type.BOOLEAN },
-                      activeNodeId: { type: Type.STRING },
-                      activeEdgeId: { type: Type.STRING },
-                      visitedNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
+                      directed: { type: Type.BOOLEAN }
+                    }
+                  },
+                  graphDelta: {
+                    type: Type.OBJECT,
+                    properties: {
+                      activeNodeId: { type: Type.STRING, nullable: true },
+                      activeEdgeId: { type: Type.STRING, nullable: true },
+                      visitNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      unvisitNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      traverseEdgeIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      untraverseEdgeIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      addNodes: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING },
+                            value: { type: Type.STRING }
+                          }
+                        }
+                      },
+                      removeNodeIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      addEdges: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING },
+                            source: { type: Type.STRING },
+                            target: { type: Type.STRING },
+                            weight: { type: Type.STRING }
+                          }
+                        }
+                      },
+                      removeEdgeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
                     }
                   },
                   dpTable: {
