@@ -72,6 +72,26 @@ export interface GraphVisualState {
   activeNodeId?: string;
   activeEdgeId?: string;
   visitedNodeIds?: string[];
+  traversedEdgeIds?: string[];
+}
+
+export interface GraphTraceBase {
+  nodes: GraphNodeState[];
+  edges: GraphEdgeState[];
+  directed?: boolean;
+}
+
+export interface GraphVisualDelta {
+  activeNodeId?: string | null;
+  activeEdgeId?: string | null;
+  visitNodeIds?: string[];
+  unvisitNodeIds?: string[];
+  traverseEdgeIds?: string[];
+  untraverseEdgeIds?: string[];
+  addNodes?: GraphNodeState[];
+  removeNodeIds?: string[];
+  addEdges?: GraphEdgeState[];
+  removeEdgeIds?: string[];
 }
 
 export interface DPCellPosition {
@@ -109,6 +129,8 @@ export interface VisualState {
   treeBase?: TreeTraceBase;
   treeDelta?: TreeVisualDelta;
   graph?: GraphVisualState;
+  graphBase?: GraphTraceBase;
+  graphDelta?: GraphVisualDelta;
   dpTable?: DPTableVisualState;
   linkedList?: LinkedListVisualState;
   indices?: Record<string, number>;
