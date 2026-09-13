@@ -225,6 +225,41 @@ test('OpenAI and Claude instructions require compact tree deltas', async () => {
   }
 });
 
+test('OpenAI and Claude instructions require compact graph deltas', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+
+  const originalFetch = globalThis.fetch;
+  const requestBodies: Record<string, any>[] = [];
+  globalThis.fetch = async (input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)));
+    const isClaude = String(input).includes('anthropic.com');
+    return new Response(JSON.stringify(isClaude
+      ? { content: [{ type: 'text', text: '[]' }] }
+      : { choices: [{ message: { content: '[]' } }] }
+    ), { status: 200 });
+  };
+
+  try {
+    const problem = { title: 'Find if Path Exists in Graph', statement: 'Find a path.' } as never;
+    await new OpenAIProvider().generateSteps(problem, 'Use BFS.', {});
+    await new ClaudeProvider().generateSteps(problem, 'Use BFS.', {});
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  for (const instructions of [
+    requestBodies[0].messages[0].content as string,
+    requestBodies[1].system as string
+  ]) {
+    assert.match(instructions, /first graph step's visualState must contain graphBase/);
+    assert.match(instructions, /Every later graph step must contain only graphDelta/);
+    assert.match(instructions, /newly visited nodes, newly traversed edges/);
+    assert.match(instructions, /Cycles and disconnected components are valid/);
+    assert.doesNotMatch(instructions, /graph.*rootId/i);
+  }
+});
+
 test('Gemini step prompt and schema include the linked-list contract', async () => {
   process.env.VITE_GEMINI_API_KEY = 'test-gemini-key';
 
@@ -284,4 +319,36 @@ test('Gemini prompt and schema require compact tree deltas', async () => {
   assert.equal(visualProperties.treeDelta.properties.activeNodeId.nullable, true);
   assert.equal(visualProperties.treeDelta.properties.rootId.nullable, true);
   assert.ok(visualProperties.treeDelta.properties.updateNodes);
+});
+
+test('Gemini prompt and schema require compact graph deltas', async () => {
+  process.env.VITE_GEMINI_API_KEY = 'test-gemini-key';
+
+  const requests: any[] = [];
+  const provider = new GeminiProvider();
+  const privateProvider = provider as unknown as {
+    ai: { models: { generateContent: (request: any) => Promise<{ text: string }> } };
+  };
+  privateProvider.ai.models.generateContent = async (request) => {
+    requests.push(request);
+    return { text: '[]' };
+  };
+
+  await provider.generateSteps(
+    { title: 'Course Schedule', statement: 'Detect a directed cycle.' } as never,
+    'Use depth-first search with node colors.',
+    { input: 'numCourses = 2, prerequisites = [[1,0],[0,1]]' }
+  );
+
+  assert.match(requests[0].contents, /first graph step's visualState MUST contain graphBase/);
+  assert.match(requests[0].contents, /Every later graph step MUST contain only graphDelta/);
+  assert.match(requests[0].contents, /Cycles and disconnected components are valid/);
+  const visualProperties = requests[0].config.responseSchema.items.properties.visualState.properties;
+  assert.equal(visualProperties.graph, undefined);
+  assert.ok(visualProperties.graphBase.properties.nodes);
+  assert.ok(visualProperties.graphBase.properties.edges);
+  assert.equal(visualProperties.graphDelta.properties.activeNodeId.nullable, true);
+  assert.equal(visualProperties.graphDelta.properties.activeEdgeId.nullable, true);
+  assert.ok(visualProperties.graphDelta.properties.traverseEdgeIds);
+  assert.ok(visualProperties.graphDelta.properties.addEdges);
 });

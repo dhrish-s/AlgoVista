@@ -237,3 +237,125 @@ test('folds coordinated tree node additions and removals', () => {
   ]);
   assert.deepEqual(result.steps[2].visualState.tree?.nodes[0].children, ['right']);
 });
+
+const graphNodes = [
+  { id: 'a', value: 'A' },
+  { id: 'b', value: 'B' },
+  { id: 'c', value: 'C' }
+];
+const graphEdges = [
+  { id: 'a-b', source: 'a', target: 'b' },
+  { id: 'b-c', source: 'b', target: 'c' },
+  { id: 'c-a', source: 'c', target: 'a' }
+];
+
+const createGraphStep = (id: string, visualState: ExecutionStep['visualState']): ExecutionStep => ({
+  id,
+  line: 1,
+  explanation: `Execute ${id}`,
+  operationType: 'visit-node',
+  variables: {},
+  visualState
+});
+
+test('precomputes cyclic graph snapshots for direct step-index access', () => {
+  const result = validateExecutionSteps([
+    createGraphStep('visit-a', {
+      graphBase: { nodes: graphNodes, edges: graphEdges, directed: true },
+      graphDelta: { activeNodeId: 'a', visitNodeIds: ['a'] }
+    }),
+    createGraphStep('traverse-a-b', {
+      graphDelta: {
+        activeNodeId: 'b', activeEdgeId: 'a-b',
+        visitNodeIds: ['b'], traverseEdgeIds: ['a-b']
+      }
+    }),
+    createGraphStep('traverse-b-c', {
+      graphDelta: {
+        activeNodeId: 'c', activeEdgeId: 'b-c',
+        visitNodeIds: ['c'], traverseEdgeIds: ['b-c']
+      }
+    }),
+    createGraphStep('close-cycle', {
+      graphDelta: { activeEdgeId: 'c-a', traverseEdgeIds: ['c-a'] }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.equal(result.steps.length, 4);
+  assert.deepEqual(result.steps[0].visualState.graph?.visitedNodeIds, ['a']);
+  assert.deepEqual(result.steps[2].visualState.graph?.visitedNodeIds, ['a', 'b', 'c']);
+  assert.deepEqual(result.steps[3].visualState.graph?.traversedEdgeIds, ['a-b', 'b-c', 'c-a']);
+  assert.equal(result.steps[3].visualState.graph?.activeEdgeId, 'c-a');
+  assert.deepEqual(result.steps[0].visualState.graph?.traversedEdgeIds, []);
+  assert.equal(result.steps[3].visualState.graphBase, undefined);
+  assert.equal(result.steps[3].visualState.graphDelta, undefined);
+});
+
+test('rejects a malformed graph base before accepting the trace', () => {
+  const result = validateExecutionSteps([
+    createStep('setup', 'init'),
+    createGraphStep('bad-graph', {
+      graphBase: {
+        nodes: [{ id: 'a', value: 'A' }],
+        edges: [{ id: 'a-b', source: 'a', target: 'missing' }]
+      },
+      graphDelta: {}
+    })
+  ]);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.steps.length, 0);
+  assert.match(result.error || '', /edge "a-b" references a missing node/);
+});
+
+test('skips invalid later graph references and folds the next valid delta', () => {
+  const result = validateExecutionSteps([
+    createGraphStep('visit-a', {
+      graphBase: { nodes: graphNodes, edges: graphEdges },
+      graphDelta: { activeNodeId: 'a', visitNodeIds: ['a'] }
+    }),
+    createGraphStep('missing-edge', {
+      graphDelta: { activeEdgeId: 'missing', traverseEdgeIds: ['missing'] }
+    }),
+    createGraphStep('missing-node', {
+      graphDelta: { activeNodeId: 'missing', visitNodeIds: ['missing'] }
+    }),
+    createGraphStep('visit-b', {
+      graphDelta: { activeNodeId: 'b', visitNodeIds: ['b'], traverseEdgeIds: ['a-b'] }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['visit-a', 'visit-b']);
+  assert.equal(result.rejectedStepCount, 2);
+  assert.match(result.warning || '', /missing edge "missing"/);
+  assert.match(result.warning || '', /missing node "missing"/);
+  assert.deepEqual(result.steps[1].visualState.graph?.visitedNodeIds, ['a', 'b']);
+});
+
+test('folds graph node and edge additions and removals atomically', () => {
+  const result = validateExecutionSteps([
+    createGraphStep('base', {
+      graphBase: {
+        nodes: [{ id: 'a', value: 'A' }, { id: 'b', value: 'B' }],
+        edges: [{ id: 'a-b', source: 'a', target: 'b' }]
+      },
+      graphDelta: {}
+    }),
+    createGraphStep('add-c', {
+      graphDelta: {
+        addNodes: [{ id: 'c', value: 'C' }],
+        addEdges: [{ id: 'b-c', source: 'b', target: 'c' }]
+      }
+    }),
+    createGraphStep('remove-b', {
+      graphDelta: { removeNodeIds: ['b'] }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps[1].visualState.graph?.edges.map((edge) => edge.id), ['a-b', 'b-c']);
+  assert.deepEqual(result.steps[2].visualState.graph?.nodes.map((node) => node.id), ['a', 'c']);
+  assert.deepEqual(result.steps[2].visualState.graph?.edges, []);
+});

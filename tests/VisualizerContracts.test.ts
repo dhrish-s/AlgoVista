@@ -4,7 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { hasSupportedVisualization, SUPPORTED_VISUAL_STATE_KEYS } from '../src/components/visualizer/VisualizerContainer';
 import { validateDPTableState } from '../src/components/visualizers/DPTableVisualizer';
-import { validateGraphState } from '../src/components/visualizers/GraphVisualizer';
+import { GraphVisualizer, validateGraphState } from '../src/components/visualizers/GraphVisualizer';
 import {
   buildLinkedListSegments,
   LinkedListVisualizer,
@@ -129,6 +129,54 @@ test('rejects malformed graph traversal markers', () => {
 test('accepts an empty graph', () => {
   const result = validateGraphState({ nodes: [], edges: [] });
   assert.equal(result.valid, true);
+});
+
+test('renders multiple folded points in a cyclic graph trace', () => {
+  const trace = validateExecutionSteps([
+    {
+      id: 'visit-a', line: 1, explanation: 'Visit A.', operationType: 'visit-node', variables: {},
+      visualState: {
+        graphBase: {
+          nodes: [{ id: 'a', value: 'A' }, { id: 'b', value: 'B' }, { id: 'c', value: 'C' }],
+          edges: [
+            { id: 'a-b', source: 'a', target: 'b' },
+            { id: 'b-c', source: 'b', target: 'c' },
+            { id: 'c-a', source: 'c', target: 'a' }
+          ],
+          directed: true
+        },
+        graphDelta: { activeNodeId: 'a', visitNodeIds: ['a'] }
+      }
+    },
+    {
+      id: 'visit-b', line: 2, explanation: 'Traverse A to B.', operationType: 'visit-node', variables: {},
+      visualState: {
+        graphDelta: {
+          activeNodeId: 'b', activeEdgeId: 'a-b',
+          visitNodeIds: ['b'], traverseEdgeIds: ['a-b']
+        }
+      }
+    },
+    {
+      id: 'close-cycle', line: 3, explanation: 'Traverse back to A.', operationType: 'visit-node', variables: {},
+      visualState: {
+        graphDelta: { activeNodeId: 'a', activeEdgeId: 'c-a', traverseEdgeIds: ['c-a'] }
+      }
+    }
+  ]);
+
+  assert.equal(trace.valid, true);
+  const firstMarkup = renderToStaticMarkup(React.createElement(GraphVisualizer, {
+    data: trace.steps[0].visualState.graph
+  }));
+  const finalMarkup = renderToStaticMarkup(React.createElement(GraphVisualizer, {
+    data: trace.steps[2].visualState.graph
+  }));
+
+  assert.match(firstMarkup, /Directed Graph/);
+  assert.match(finalMarkup, /stroke-emerald-500/);
+  assert.match(finalMarkup, /stroke-indigo-400/);
+  assert.doesNotMatch(finalMarkup, /Graph visualization unavailable/);
 });
 
 test('accepts a rectangular DP table with labels and markers', () => {
