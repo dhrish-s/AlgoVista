@@ -173,7 +173,7 @@ export class GeminiProvider implements AIProvider {
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
          For tree algorithms, use a compact base-and-delta trace. The first tree step's visualState MUST contain treeBase with nodes shaped as { id, value, children } and rootId, plus treeDelta. Every later tree step MUST contain only treeDelta and MUST NOT repeat treeBase or a full tree snapshot. A treeDelta may use activeNodeId (string or null), highlightNodeIds, unhighlightNodeIds, rootId (string or null), addNodes, updateNodes shaped as { id, value?, children? }, and removeNodeIds. Use {} when a step changes no tree visualization fields. Keep node ids stable, make every reference valid in the resulting tree, and include structural fields only when they actually change.
          For graph algorithms, use a compact base-and-delta trace with no root concept. The first graph step's visualState MUST contain graphBase with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, and directed, plus graphDelta. Every later graph step MUST contain only graphDelta and MUST NOT repeat graphBase or a full graph snapshot. A graphDelta may use activeNodeId or activeEdgeId (string or null), visitNodeIds, unvisitNodeIds, traverseEdgeIds, untraverseEdgeIds, addNodes, removeNodeIds, addEdges, and removeEdgeIds. Most BFS, DFS, and path-finding steps should include only newly visited nodes, newly traversed edges, and active ids. Use structural fields only when the algorithm actually mutates the graph, and use {} when nothing changes visually. Keep node and edge ids stable and make every reference valid in the resulting graph. Cycles and disconnected components are valid graph structures.
-         For dynamic programming algorithms, visualState MUST use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
+         For dynamic programming algorithms, use a compact base-and-delta trace. The first DP table step's visualState MUST contain dpTableBase with rows, columns, optional initialCells shaped as { row, column, value }, and optional rowLabels and columnLabels, plus dpTableDelta. Every later DP table step MUST contain only dpTableDelta and MUST NOT repeat dpTableBase or a full values matrix. A dpTableDelta may use updates shaped as { row, column, value }, activeCell as { row, column } or null, and highlightedCells as an array of { row, column }. List only cells changed during that step, even when a step changes a full row, column, or diagonal. Do not repeat previously filled cells. Use {} when nothing changes visually, and keep every cell coordinate within the base dimensions.
          For linked-list algorithms and pointer traversal or manipulation over a linked list, visualState MUST use linkedList with nodes shaped as { id, value, nextId }, headId, activeNodeId, and highlightedNodeIds. Every node MUST include nextId as a node id string or null, and each null-terminated chain's tail MUST use null explicitly. Use stable node ids across steps, keep headId and nextId links synchronized with the CURRENT step after its described operations, and highlight the nodes relevant to that step. This applies to problems such as Reverse Linked List, Merge Two Sorted Lists, Remove Nth Node From End of List, Middle of the Linked List, Linked List Cycle, and Palindrome Linked List. Use another visualization type when a linked list is not the algorithm's meaningful state.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `
@@ -188,7 +188,7 @@ export class GeminiProvider implements AIProvider {
          For queue algorithms, visualState MUST use queue as an array ordered from front to back.
          For tree algorithms, use a compact base-and-delta trace. The first tree step's visualState MUST contain treeBase with nodes shaped as { id, value, children } and rootId, plus treeDelta. Every later tree step MUST contain only treeDelta and MUST NOT repeat treeBase or a full tree snapshot. A treeDelta may use activeNodeId (string or null), highlightNodeIds, unhighlightNodeIds, rootId (string or null), addNodes, updateNodes shaped as { id, value?, children? }, and removeNodeIds. Use {} when a step changes no tree visualization fields. Keep node ids stable, make every reference valid in the resulting tree, and include structural fields only when they actually change.
          For graph algorithms, use a compact base-and-delta trace with no root concept. The first graph step's visualState MUST contain graphBase with nodes shaped as { id, value }, edges shaped as { id, source, target, weight }, and directed, plus graphDelta. Every later graph step MUST contain only graphDelta and MUST NOT repeat graphBase or a full graph snapshot. A graphDelta may use activeNodeId or activeEdgeId (string or null), visitNodeIds, unvisitNodeIds, traverseEdgeIds, untraverseEdgeIds, addNodes, removeNodeIds, addEdges, and removeEdgeIds. Most BFS, DFS, and path-finding steps should include only newly visited nodes, newly traversed edges, and active ids. Use structural fields only when the algorithm actually mutates the graph, and use {} when nothing changes visually. Keep node and edge ids stable and make every reference valid in the resulting graph. Cycles and disconnected components are valid graph structures.
-         For dynamic programming algorithms, visualState MUST use dpTable with values as a rectangular matrix, optional rowLabels and columnLabels arrays, activeCell as { row, column }, and highlightedCells as an array of { row, column }.
+         For dynamic programming algorithms, use a compact base-and-delta trace. The first DP table step's visualState MUST contain dpTableBase with rows, columns, optional initialCells shaped as { row, column, value }, and optional rowLabels and columnLabels, plus dpTableDelta. Every later DP table step MUST contain only dpTableDelta and MUST NOT repeat dpTableBase or a full values matrix. A dpTableDelta may use updates shaped as { row, column, value }, activeCell as { row, column } or null, and highlightedCells as an array of { row, column }. List only cells changed during that step, even when a step changes a full row, column, or diagonal. Do not repeat previously filled cells. Use {} when nothing changes visually, and keep every cell coordinate within the base dimensions.
          For linked-list algorithms and pointer traversal or manipulation over a linked list, visualState MUST use linkedList with nodes shaped as { id, value, nextId }, headId, activeNodeId, and highlightedNodeIds. Every node MUST include nextId as a node id string or null, and each null-terminated chain's tail MUST use null explicitly. Use stable node ids across steps, keep headId and nextId links synchronized with the CURRENT step after its described operations, and highlight the nodes relevant to that step. This applies to problems such as Reverse Linked List, Merge Two Sorted Lists, Remove Nth Node From End of List, Middle of the Linked List, Linked List Cycle, and Palindrome Linked List. Use another visualization type when a linked list is not the algorithm's meaningful state.
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `;
@@ -336,20 +336,43 @@ export class GeminiProvider implements AIProvider {
                       removeEdgeIds: { type: Type.ARRAY, items: { type: Type.STRING } }
                     }
                   },
-                  dpTable: {
+                  dpTableBase: {
                     type: Type.OBJECT,
                     properties: {
-                      values: {
+                      rows: { type: Type.INTEGER },
+                      columns: { type: Type.INTEGER },
+                      initialCells: {
                         type: Type.ARRAY,
                         items: {
-                          type: Type.ARRAY,
-                          items: { type: Type.STRING }
+                          type: Type.OBJECT,
+                          properties: {
+                            row: { type: Type.INTEGER },
+                            column: { type: Type.INTEGER },
+                            value: { type: Type.STRING }
+                          }
                         }
                       },
                       rowLabels: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      columnLabels: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      columnLabels: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                  },
+                  dpTableDelta: {
+                    type: Type.OBJECT,
+                    properties: {
+                      updates: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            row: { type: Type.INTEGER },
+                            column: { type: Type.INTEGER },
+                            value: { type: Type.STRING }
+                          }
+                        }
+                      },
                       activeCell: {
                         type: Type.OBJECT,
+                        nullable: true,
                         properties: {
                           row: { type: Type.INTEGER },
                           column: { type: Type.INTEGER }
