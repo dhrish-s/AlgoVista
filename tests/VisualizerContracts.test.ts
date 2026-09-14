@@ -381,6 +381,55 @@ test('bounds cyclic linked-list traversal and identifies the cycle target', () =
   }
 });
 
+test('folds and renders every snapshot after a linked-list delta creates a cycle', () => {
+  const trace = validateExecutionSteps([
+    {
+      id: 'initialize', line: 1, explanation: 'Start at A.', operationType: 'move-pointer', variables: {},
+      visualState: {
+        linkedListBase: {
+          nodes: [
+            { id: 'a', value: 'A', nextId: 'b' },
+            { id: 'b', value: 'B', nextId: 'c' },
+            { id: 'c', value: 'C', nextId: null }
+          ],
+          headId: 'a'
+        },
+        linkedListDelta: { activeNodeId: 'a' }
+      }
+    },
+    {
+      id: 'create-cycle', line: 2, explanation: 'Point C back to B.', operationType: 'assign', variables: {},
+      visualState: {
+        linkedListDelta: {
+          nextUpdates: [{ id: 'c', nextId: 'b' }],
+          activeNodeId: 'c',
+          highlightedNodeIds: ['b', 'c']
+        }
+      }
+    },
+    {
+      id: 'detect-cycle', line: 3, explanation: 'Detect the back-reference.', operationType: 'found', variables: {},
+      visualState: { linkedListDelta: { activeNodeId: 'b' } }
+    }
+  ]);
+
+  assert.equal(trace.valid, true);
+  assert.equal(trace.steps.length, 3);
+  for (const step of [trace.steps[2], trace.steps[0], trace.steps[1]]) {
+    const state = step.visualState.linkedList;
+    assert.ok(state);
+    const segments = buildLinkedListSegments(state);
+    assert.ok(segments.every((segment) => segment.nodeIds.length <= state.nodes.length));
+    const markup = renderToStaticMarkup(React.createElement(LinkedListVisualizer, { data: state }));
+    assert.match(markup, /Linked List/);
+    assert.doesNotMatch(markup, /Linked-list visualization unavailable/);
+  }
+  assert.equal(
+    buildLinkedListSegments(trace.steps[1].visualState.linkedList!)[0].connectionTargetId,
+    'b'
+  );
+});
+
 test('preserves detached chains used by intermediate pointer states', () => {
   const validation = validateLinkedListState({
     nodes: [

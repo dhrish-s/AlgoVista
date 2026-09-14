@@ -477,3 +477,112 @@ test('skips out-of-bounds DP deltas and folds the next valid update', () => {
   assert.match(result.warning || '', /activeCell points outside the 2x2 DP table/);
   assert.deepEqual(result.steps[1].visualState.dpTable?.values, [[1, null], [null, 2]]);
 });
+
+const linkedListNodes = [
+  { id: 'one', value: 1, nextId: 'two' },
+  { id: 'two', value: 2, nextId: 'three' },
+  { id: 'three', value: 3, nextId: null }
+];
+
+const createLinkedListStep = (
+  id: string,
+  visualState: ExecutionStep['visualState']
+): ExecutionStep => ({
+  id,
+  line: 1,
+  explanation: `Execute ${id}`,
+  operationType: 'move-pointer',
+  variables: {},
+  visualState
+});
+
+test('precomputes every linked-list reversal snapshot for direct step access', () => {
+  const result = validateExecutionSteps([
+    createLinkedListStep('initialize', {
+      linkedListBase: { nodes: linkedListNodes, headId: 'one' },
+      linkedListDelta: { activeNodeId: 'one', highlightedNodeIds: ['one'] }
+    }),
+    createLinkedListStep('reverse-one', {
+      linkedListDelta: {
+        nextUpdates: [{ id: 'one', nextId: null }],
+        activeNodeId: 'two',
+        highlightedNodeIds: ['one', 'two']
+      }
+    }),
+    createLinkedListStep('reverse-two', {
+      linkedListDelta: {
+        nextUpdates: [{ id: 'two', nextId: 'one' }],
+        headId: 'two',
+        activeNodeId: 'three',
+        highlightedNodeIds: ['two', 'three']
+      }
+    }),
+    createLinkedListStep('reverse-three', {
+      linkedListDelta: {
+        nextUpdates: [{ id: 'three', nextId: 'two' }],
+        headId: 'three',
+        activeNodeId: null,
+        highlightedNodeIds: ['three']
+      }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.equal(result.steps.length, 4);
+  assert.deepEqual(result.steps[3].visualState.linkedList?.nodes.map((node) => node.nextId), [
+    null, 'one', 'two'
+  ]);
+  assert.equal(result.steps[3].visualState.linkedList?.headId, 'three');
+  assert.equal(result.steps[2].visualState.linkedList?.headId, 'two');
+  assert.equal(result.steps[2].visualState.linkedList?.nodes[2].nextId, null);
+  assert.equal(result.steps[1].visualState.linkedList?.nodes[1].nextId, 'three');
+  assert.equal(result.steps[0].visualState.linkedList?.nodes[0].nextId, 'two');
+  assert.equal(result.steps[3].visualState.linkedListBase, undefined);
+  assert.equal(result.steps[3].visualState.linkedListDelta, undefined);
+});
+
+test('rejects a malformed linked-list base before accepting the trace', () => {
+  const result = validateExecutionSteps([
+    createStep('setup', 'init'),
+    createLinkedListStep('bad-list', {
+      linkedListBase: {
+        nodes: [{ id: 'head', value: 1, nextId: 'missing' }],
+        headId: 'head'
+      },
+      linkedListDelta: {}
+    })
+  ]);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.steps.length, 0);
+  assert.match(result.error || '', /references missing next node "missing"/);
+});
+
+test('skips invalid linked-list delta references and folds the next valid pointer change', () => {
+  const result = validateExecutionSteps([
+    createLinkedListStep('initialize', {
+      linkedListBase: { nodes: linkedListNodes, headId: 'one' },
+      linkedListDelta: {}
+    }),
+    createLinkedListStep('missing-source', {
+      linkedListDelta: { nextUpdates: [{ id: 'missing', nextId: null }] }
+    }),
+    createLinkedListStep('missing-target', {
+      linkedListDelta: { nextUpdates: [{ id: 'one', nextId: 'missing' }] }
+    }),
+    createLinkedListStep('continue', {
+      linkedListDelta: {
+        nextUpdates: [{ id: 'one', nextId: null }],
+        activeNodeId: 'two'
+      }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['initialize', 'continue']);
+  assert.equal(result.rejectedStepCount, 2);
+  assert.match(result.warning || '', /cannot update missing linked-list node "missing"/);
+  assert.match(result.warning || '', /references missing next node "missing"/);
+  assert.equal(result.steps[1].visualState.linkedList?.nodes[0].nextId, null);
+  assert.equal(result.steps[1].visualState.linkedList?.nodes[1].nextId, 'three');
+});

@@ -158,7 +158,7 @@ test('provider manager preserves structured API details in its final error', asy
   }
 });
 
-test('OpenAI and Claude step instructions include the linked-list contract', async () => {
+test('OpenAI and Claude instructions require compact linked-list pointer deltas', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
 
@@ -184,9 +184,11 @@ test('OpenAI and Claude step instructions include the linked-list contract', asy
   const openAIInstructions = requestBodies[0].messages[0].content as string;
   const claudeInstructions = requestBodies[1].system as string;
   for (const instructions of [openAIInstructions, claudeInstructions]) {
-    assert.match(instructions, /visualState must use linkedList/);
-    assert.match(instructions, /stable node ids across steps/);
-    assert.match(instructions, /tail must use null explicitly/);
+    assert.match(instructions, /first linked-list step's visualState must contain linkedListBase/);
+    assert.match(instructions, /Every later linked-list step must contain only linkedListDelta/);
+    assert.match(instructions, /actual pointer change in nextUpdates/);
+    assert.match(instructions, /Represent a cycle by pointing nextId back to an existing node/);
+    assert.match(instructions, /visualization state match that step's explanation/);
     assert.match(instructions, /operationType must be one of: init, compare, move-pointer/);
   }
 });
@@ -294,7 +296,7 @@ test('OpenAI and Claude instructions require compact DP table deltas', async () 
   }
 });
 
-test('Gemini step prompt and schema include the linked-list contract', async () => {
+test('Gemini prompt and schema require compact linked-list pointer deltas', async () => {
   process.env.VITE_GEMINI_API_KEY = 'test-gemini-key';
 
   const requests: any[] = [];
@@ -314,16 +316,22 @@ test('Gemini step prompt and schema include the linked-list contract', async () 
   );
 
   assert.equal(requests.length, 1);
-  assert.match(requests[0].contents, /visualState MUST use linkedList/);
-  assert.match(requests[0].contents, /CURRENT step/);
+  assert.match(requests[0].contents, /first linked-list step's visualState MUST contain linkedListBase/);
+  assert.match(requests[0].contents, /Every later linked-list step MUST contain only linkedListDelta/);
+  assert.match(requests[0].contents, /CURRENT structure/);
+  assert.match(requests[0].contents, /actual pointer change in nextUpdates/);
+  assert.match(requests[0].contents, /Represent a cycle by pointing nextId back to an existing node/);
   assert.match(requests[0].contents, /operationType MUST be one of: init, compare, move-pointer/);
   const operationTypes = requests[0].config.responseSchema.items.properties.operationType.enum;
   assert.ok(operationTypes.includes('move-pointer'));
   assert.ok(operationTypes.includes('return'));
-  const linkedListSchema = requests[0].config.responseSchema.items.properties.visualState.properties.linkedList;
-  assert.equal(linkedListSchema.properties.nodes.items.properties.nextId.nullable, true);
-  assert.equal(linkedListSchema.properties.headId.nullable, true);
-  assert.ok(linkedListSchema.properties.highlightedNodeIds);
+  const visualProperties = requests[0].config.responseSchema.items.properties.visualState.properties;
+  assert.equal(visualProperties.linkedList, undefined);
+  assert.equal(visualProperties.linkedListBase.properties.nodes.items.properties.nextId.nullable, true);
+  assert.equal(visualProperties.linkedListBase.properties.headId.nullable, true);
+  assert.equal(visualProperties.linkedListDelta.properties.nextUpdates.items.properties.nextId.nullable, true);
+  assert.equal(visualProperties.linkedListDelta.properties.activeNodeId.nullable, true);
+  assert.ok(visualProperties.linkedListDelta.properties.highlightedNodeIds);
 });
 
 test('Gemini prompt and schema require compact tree deltas', async () => {
