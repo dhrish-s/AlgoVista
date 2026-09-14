@@ -99,11 +99,29 @@ export interface DPCellPosition {
   column: number;
 }
 
+export interface DPCellUpdate extends DPCellPosition {
+  value: VisualPrimitive;
+}
+
 export interface DPTableVisualState {
   values: VisualPrimitive[][];
   rowLabels?: VisualPrimitive[];
   columnLabels?: VisualPrimitive[];
   activeCell?: DPCellPosition;
+  highlightedCells?: DPCellPosition[];
+}
+
+export interface DPTableTraceBase {
+  rows: number;
+  columns: number;
+  initialCells?: DPCellUpdate[];
+  rowLabels?: VisualPrimitive[];
+  columnLabels?: VisualPrimitive[];
+}
+
+export interface DPTableVisualDelta {
+  updates?: DPCellUpdate[];
+  activeCell?: DPCellPosition | null;
   highlightedCells?: DPCellPosition[];
 }
 
@@ -132,6 +150,8 @@ export interface VisualState {
   graphBase?: GraphTraceBase;
   graphDelta?: GraphVisualDelta;
   dpTable?: DPTableVisualState;
+  dpTableBase?: DPTableTraceBase;
+  dpTableDelta?: DPTableVisualDelta;
   linkedList?: LinkedListVisualState;
   indices?: Record<string, number>;
   highlights?: (number | string)[];
