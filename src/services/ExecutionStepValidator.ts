@@ -1,4 +1,5 @@
 import { ExecutionStep, OperationType } from '../types';
+import { resolveDPTableTraceSteps } from './DPTableTraceValidator';
 import { resolveGraphTraceSteps } from './GraphTraceValidator';
 import { resolveTreeTraceSteps } from './TreeTraceValidator';
 import { normalizeVisualState } from './VisualStateNormalizer';
@@ -92,8 +93,10 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
   errors.push(...treeValidation.errors);
   const graphValidation = resolveGraphTraceSteps(treeValidation.steps);
   errors.push(...graphValidation.errors);
+  const dpTableValidation = resolveDPTableTraceSteps(graphValidation.steps);
+  errors.push(...dpTableValidation.errors);
 
-  if (graphValidation.steps.length === 0) {
+  if (dpTableValidation.steps.length === 0) {
     return {
       valid: false,
       steps: [],
@@ -105,7 +108,7 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
 
   return {
     valid: true,
-    steps: graphValidation.steps,
+    steps: dpTableValidation.steps,
     isTruncated,
     rejectedStepCount: errors.length,
     error: isTruncated
