@@ -138,6 +138,23 @@ export interface LinkedListVisualState {
   highlightedNodeIds?: string[];
 }
 
+export interface LinkedListNextUpdate {
+  id: string;
+  nextId: string | null;
+}
+
+export interface LinkedListTraceBase {
+  nodes: LinkedListNodeState[];
+  headId: string | null;
+}
+
+export interface LinkedListVisualDelta {
+  nextUpdates?: LinkedListNextUpdate[];
+  headId?: string | null;
+  activeNodeId?: string | null;
+  highlightedNodeIds?: string[];
+}
+
 export interface VisualState {
   array?: unknown[];
   map?: Record<string, unknown>;
@@ -153,6 +170,8 @@ export interface VisualState {
   dpTableBase?: DPTableTraceBase;
   dpTableDelta?: DPTableVisualDelta;
   linkedList?: LinkedListVisualState;
+  linkedListBase?: LinkedListTraceBase;
+  linkedListDelta?: LinkedListVisualDelta;
   indices?: Record<string, number>;
   highlights?: (number | string)[];
 }
