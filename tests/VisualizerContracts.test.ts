@@ -3,7 +3,10 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { hasSupportedVisualization, SUPPORTED_VISUAL_STATE_KEYS } from '../src/components/visualizer/VisualizerContainer';
-import { validateDPTableState } from '../src/components/visualizers/DPTableVisualizer';
+import {
+  DPTableVisualizer,
+  validateDPTableState
+} from '../src/components/visualizers/DPTableVisualizer';
 import { GraphVisualizer, validateGraphState } from '../src/components/visualizers/GraphVisualizer';
 import {
   buildLinkedListSegments,
@@ -216,6 +219,54 @@ test('rejects DP cell markers outside the table', () => {
 test('accepts an empty DP table', () => {
   const result = validateDPTableState({ values: [] });
   assert.equal(result.valid, true);
+});
+
+test('renders multiple folded points in a compact DP table trace', () => {
+  const trace = validateExecutionSteps([
+    {
+      id: 'initialize', line: 1, explanation: 'Set base cases.', operationType: 'update-dp', variables: {},
+      visualState: {
+        dpTableBase: {
+          rows: 2,
+          columns: 3,
+          initialCells: [
+            { row: 0, column: 0, value: 1 },
+            { row: 0, column: 1, value: 1 },
+            { row: 0, column: 2, value: 1 },
+            { row: 1, column: 0, value: 1 }
+          ]
+        },
+        dpTableDelta: { activeCell: { row: 0, column: 0 } }
+      }
+    },
+    {
+      id: 'fill-row', line: 2, explanation: 'Fill the next row.', operationType: 'update-dp', variables: {},
+      visualState: {
+        dpTableDelta: {
+          updates: [
+            { row: 1, column: 1, value: 2 },
+            { row: 1, column: 2, value: 3 }
+          ],
+          activeCell: { row: 1, column: 2 },
+          highlightedCells: [{ row: 1, column: 2 }]
+        }
+      }
+    }
+  ]);
+
+  assert.equal(trace.valid, true);
+  const finalMarkup = renderToStaticMarkup(React.createElement(DPTableVisualizer, {
+    data: trace.steps[1].visualState.dpTable
+  }));
+  const firstMarkup = renderToStaticMarkup(React.createElement(DPTableVisualizer, {
+    data: trace.steps[0].visualState.dpTable
+  }));
+
+  assert.match(firstMarkup, /Dynamic Programming Table/);
+  assert.doesNotMatch(firstMarkup, />3</);
+  assert.match(finalMarkup, />3</);
+  assert.match(finalMarkup, /bg-indigo-500/);
+  assert.doesNotMatch(finalMarkup, /DP table visualization unavailable/);
 });
 
 test('accepts a multi-node linked list with current and highlighted nodes', () => {

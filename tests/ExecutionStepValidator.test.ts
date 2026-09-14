@@ -359,3 +359,121 @@ test('folds graph node and edge additions and removals atomically', () => {
   assert.deepEqual(result.steps[2].visualState.graph?.nodes.map((node) => node.id), ['a', 'c']);
   assert.deepEqual(result.steps[2].visualState.graph?.edges, []);
 });
+
+const createDPTableStep = (
+  id: string,
+  visualState: ExecutionStep['visualState']
+): ExecutionStep => ({
+  id,
+  line: 1,
+  explanation: `Execute ${id}`,
+  operationType: 'update-dp',
+  variables: {},
+  visualState
+});
+
+test('precomputes DP table snapshots with batched row updates for direct access', () => {
+  const result = validateExecutionSteps([
+    createDPTableStep('base-cases', {
+      dpTableBase: {
+        rows: 3,
+        columns: 4,
+        initialCells: [
+          { row: 0, column: 0, value: 1 },
+          { row: 0, column: 1, value: 1 },
+          { row: 0, column: 2, value: 1 },
+          { row: 0, column: 3, value: 1 },
+          { row: 1, column: 0, value: 1 },
+          { row: 2, column: 0, value: 1 }
+        ],
+        rowLabels: [1, 2, 3],
+        columnLabels: [1, 2, 3, 4]
+      },
+      dpTableDelta: {
+        activeCell: { row: 0, column: 0 },
+        highlightedCells: [{ row: 0, column: 0 }]
+      }
+    }),
+    createDPTableStep('fill-second-row', {
+      dpTableDelta: {
+        updates: [
+          { row: 1, column: 1, value: 2 },
+          { row: 1, column: 2, value: 3 },
+          { row: 1, column: 3, value: 4 }
+        ],
+        activeCell: { row: 1, column: 3 },
+        highlightedCells: [
+          { row: 1, column: 1 },
+          { row: 1, column: 2 },
+          { row: 1, column: 3 }
+        ]
+      }
+    }),
+    createDPTableStep('fill-third-row', {
+      dpTableDelta: {
+        updates: [
+          { row: 2, column: 1, value: 3 },
+          { row: 2, column: 2, value: 6 },
+          { row: 2, column: 3, value: 10 }
+        ],
+        activeCell: { row: 2, column: 3 },
+        highlightedCells: [{ row: 2, column: 3 }]
+      }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.equal(result.steps.length, 3);
+  assert.deepEqual(result.steps[2].visualState.dpTable?.values, [
+    [1, 1, 1, 1],
+    [1, 2, 3, 4],
+    [1, 3, 6, 10]
+  ]);
+  assert.deepEqual(result.steps[1].visualState.dpTable?.values[1], [1, 2, 3, 4]);
+  assert.deepEqual(result.steps[0].visualState.dpTable?.values[1], [1, null, null, null]);
+  assert.deepEqual(result.steps[2].visualState.dpTable?.activeCell, { row: 2, column: 3 });
+  assert.equal(result.steps[2].visualState.dpTableBase, undefined);
+  assert.equal(result.steps[2].visualState.dpTableDelta, undefined);
+});
+
+test('rejects a malformed DP table base before accepting the trace', () => {
+  const result = validateExecutionSteps([
+    createStep('setup', 'init'),
+    createDPTableStep('bad-table', {
+      dpTableBase: { rows: 2, columns: 3, rowLabels: ['only-one'] },
+      dpTableDelta: {}
+    })
+  ]);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.steps.length, 0);
+  assert.match(result.error || '', /rowLabels length must match/);
+});
+
+test('skips out-of-bounds DP deltas and folds the next valid update', () => {
+  const result = validateExecutionSteps([
+    createDPTableStep('initialize', {
+      dpTableBase: { rows: 2, columns: 2 },
+      dpTableDelta: { updates: [{ row: 0, column: 0, value: 1 }] }
+    }),
+    createDPTableStep('bad-row', {
+      dpTableDelta: { updates: [{ row: 2, column: 0, value: 2 }] }
+    }),
+    createDPTableStep('bad-column', {
+      dpTableDelta: { activeCell: { row: 0, column: 2 } }
+    }),
+    createDPTableStep('continue', {
+      dpTableDelta: {
+        updates: [{ row: 1, column: 1, value: 2 }],
+        activeCell: { row: 1, column: 1 }
+      }
+    })
+  ]);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['initialize', 'continue']);
+  assert.equal(result.rejectedStepCount, 2);
+  assert.match(result.warning || '', /updates\[0\] points outside the 2x2 DP table/);
+  assert.match(result.warning || '', /activeCell points outside the 2x2 DP table/);
+  assert.deepEqual(result.steps[1].visualState.dpTable?.values, [[1, null], [null, 2]]);
+});

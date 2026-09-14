@@ -260,6 +260,40 @@ test('OpenAI and Claude instructions require compact graph deltas', async () => 
   }
 });
 
+test('OpenAI and Claude instructions require compact DP table deltas', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+
+  const originalFetch = globalThis.fetch;
+  const requestBodies: Record<string, any>[] = [];
+  globalThis.fetch = async (input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)));
+    const isClaude = String(input).includes('anthropic.com');
+    return new Response(JSON.stringify(isClaude
+      ? { content: [{ type: 'text', text: '[]' }] }
+      : { choices: [{ message: { content: '[]' } }] }
+    ), { status: 200 });
+  };
+
+  try {
+    const problem = { title: 'Unique Paths', statement: 'Count paths through a grid.' } as never;
+    await new OpenAIProvider().generateSteps(problem, 'Fill a DP table.', {});
+    await new ClaudeProvider().generateSteps(problem, 'Fill a DP table.', {});
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  for (const instructions of [
+    requestBodies[0].messages[0].content as string,
+    requestBodies[1].system as string
+  ]) {
+    assert.match(instructions, /first DP table step's visualState must contain dpTableBase/);
+    assert.match(instructions, /Every later DP table step must contain only dpTableDelta/);
+    assert.match(instructions, /full row, column, or diagonal/);
+    assert.match(instructions, /Do not repeat previously filled cells/);
+  }
+});
+
 test('Gemini step prompt and schema include the linked-list contract', async () => {
   process.env.VITE_GEMINI_API_KEY = 'test-gemini-key';
 
@@ -351,4 +385,34 @@ test('Gemini prompt and schema require compact graph deltas', async () => {
   assert.equal(visualProperties.graphDelta.properties.activeEdgeId.nullable, true);
   assert.ok(visualProperties.graphDelta.properties.traverseEdgeIds);
   assert.ok(visualProperties.graphDelta.properties.addEdges);
+});
+
+test('Gemini prompt and schema require compact DP table deltas', async () => {
+  process.env.VITE_GEMINI_API_KEY = 'test-gemini-key';
+
+  const requests: any[] = [];
+  const provider = new GeminiProvider();
+  const privateProvider = provider as unknown as {
+    ai: { models: { generateContent: (request: any) => Promise<{ text: string }> } };
+  };
+  privateProvider.ai.models.generateContent = async (request) => {
+    requests.push(request);
+    return { text: '[]' };
+  };
+
+  await provider.generateSteps(
+    { title: 'Unique Paths', statement: 'Count paths through a grid.' } as never,
+    'Fill a dynamic programming table.',
+    { input: 'm = 3, n = 7' }
+  );
+
+  assert.match(requests[0].contents, /first DP table step's visualState MUST contain dpTableBase/);
+  assert.match(requests[0].contents, /Every later DP table step MUST contain only dpTableDelta/);
+  assert.match(requests[0].contents, /Do not repeat previously filled cells/);
+  const visualProperties = requests[0].config.responseSchema.items.properties.visualState.properties;
+  assert.equal(visualProperties.dpTable, undefined);
+  assert.ok(visualProperties.dpTableBase.properties.initialCells);
+  assert.ok(visualProperties.dpTableDelta.properties.updates);
+  assert.equal(visualProperties.dpTableDelta.properties.activeCell.nullable, true);
+  assert.ok(visualProperties.dpTableDelta.properties.highlightedCells);
 });
