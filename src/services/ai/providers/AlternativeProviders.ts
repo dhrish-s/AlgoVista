@@ -364,8 +364,24 @@ ${code}`,
     };
   }
 
-  async generateSolution(_problem: StructuredProblem, _approach: ApproachOption, _options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
-    throw new Error('Claude solution generation is not implemented yet.');
+  async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
+    const { content, raw } = await this.requestText(
+      SOLUTION_INSTRUCTIONS,
+      `Problem: ${problem.title}
+Statement: ${problem.statement}
+Constraints: ${problem.constraints.join('\n')}
+Selected approach: ${approach.name}
+Approach details: ${approach.explanation}
+Starter signature, when available:
+${problem.starterCode || 'No starter signature was provided.'}`,
+      options,
+      CLAUDE_DEFAULT_MAX_TOKENS
+    );
+
+    return {
+      data: extractJson<GeneratedSolution>(content, {} as GeneratedSolution),
+      raw
+    };
   }
 
   async coachMessage(
