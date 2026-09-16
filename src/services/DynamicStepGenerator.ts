@@ -22,7 +22,8 @@ export class DynamicStepGenerator {
     problem: StructuredProblem,
     approach: ApproachOption,
     testCase: { input: string; output: string },
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    sourceLineCount?: number
   ): Promise<ExecutionStep[]> {
     const aiManager = getAIManager();
     if (!aiManager) throw new Error("AI Manager not initialized.");
@@ -37,7 +38,11 @@ export class DynamicStepGenerator {
       throw err;
     }
 
-    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, approach.explanation, testCase, { task: 'steps', signal });
+    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, approach.explanation, testCase, {
+      task: 'steps',
+      signal,
+      sourceLineCount
+    });
 
     // Ignore if a newer request started
     if (DynamicStepGenerator.latestRequestMap[key] !== reqId) {
@@ -47,7 +52,7 @@ export class DynamicStepGenerator {
     }
 
     // Validate and sanitize returned steps
-    const validation = validateExecutionSteps(rawSteps);
+    const validation = validateExecutionSteps(rawSteps, { sourceLineCount });
     if (!validation.valid) {
       throw new Error(`Invalid step trace: ${validation.error}`);
     }

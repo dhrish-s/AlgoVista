@@ -59,6 +59,29 @@ test('reports malformed steps retained alongside a usable partial trace', () => 
   assert.match(result.warning || '', /Step 1: missing or invalid id/);
 });
 
+test('rejects generated trace lines outside the known source range', () => {
+  const result = validateExecutionSteps([
+    createStep('initialize', 'init'),
+    { ...createStep('outside-source', 'compare'), line: 4 }
+  ], { sourceLineCount: 3 });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['initialize']);
+  assert.equal(result.rejectedStepCount, 1);
+  assert.match(result.warning || '', /outside the generated source range 1-3/);
+});
+
+test('rejects a generated trace when every line is outside the source range', () => {
+  const result = validateExecutionSteps([
+    { ...createStep('zero', 'init'), line: 0 },
+    { ...createStep('too-large', 'return'), line: 5 }
+  ], { sourceLineCount: 3 });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.steps.length, 0);
+  assert.match(result.error || '', /No valid steps found/);
+});
+
 test('normalizes array values, pointers, and highlighted indices', () => {
   const step = createStep('scan', 'move-pointer');
   const result = validateExecutionSteps([{

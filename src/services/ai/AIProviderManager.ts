@@ -87,7 +87,7 @@ export class AIProviderManager {
   async generateSteps(problem: any, code: string, testCase: any, options?: AIRequestOptions) {
     return this.executeWithRetry(async (provider, providerOptions) => {
       const response = await provider.generateSteps(problem, code, testCase, providerOptions);
-      const validation = validateExecutionSteps(response.data);
+      const validation = validateExecutionSteps(response.data, { sourceLineCount: options?.sourceLineCount });
       if (!validation.valid) {
         throw new Error(`Invalid step trace: ${validation.error}`);
       }

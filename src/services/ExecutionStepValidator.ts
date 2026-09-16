@@ -14,6 +14,10 @@ export interface StepValidationResult {
   warning?: string;
 }
 
+export interface StepValidationOptions {
+  sourceLineCount?: number;
+}
+
 const MAX_STEPS = 50;
 const VALID_OPERATION_TYPES = new Set<OperationType>([
   'init', 'compare', 'move-pointer', 'swap', 'insert-map', 'lookup-map',
@@ -22,7 +26,7 @@ const VALID_OPERATION_TYPES = new Set<OperationType>([
   'window-shrink', 'return', 'found', 'assign'
 ]);
 
-export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult => {
+export const validateExecutionSteps = (rawSteps: unknown, options: StepValidationOptions = {}): StepValidationResult => {
   if (!Array.isArray(rawSteps)) {
     return {
       valid: false,
@@ -57,6 +61,14 @@ export const validateExecutionSteps = (rawSteps: unknown): StepValidationResult 
 
     if (typeof rawStep.line !== 'number' || rawStep.line < 0) {
       errors.push(`Step ${i}: invalid line number`);
+      continue;
+    }
+
+    if (
+      options.sourceLineCount !== undefined &&
+      (!Number.isInteger(rawStep.line) || rawStep.line < 1 || rawStep.line > options.sourceLineCount)
+    ) {
+      errors.push(`Step ${i}: line ${rawStep.line} is outside the generated source range 1-${options.sourceLineCount}`);
       continue;
     }
 
