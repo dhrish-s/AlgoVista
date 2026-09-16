@@ -439,8 +439,50 @@ export class GeminiProvider implements AIProvider {
     return { data: JSON.parse(response.text || '[]') };
   }
 
-  async generateSolution(_problem: StructuredProblem, _approach: ApproachOption, _options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
-    throw new Error('Gemini solution generation is not implemented yet.');
+  async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: options?.model || getDefaultModelNames().gemini,
+        contents: `Generate a complete TypeScript solution for this algorithm problem.
+Problem: ${problem.title}
+Statement: ${problem.statement}
+Constraints: ${problem.constraints.join('\n')}
+Selected approach: ${approach.name}
+Approach details: ${approach.explanation}
+Starter signature, when available:
+${problem.starterCode || 'No starter signature was provided.'}
+
+Return executable TypeScript that follows the selected approach. Preserve the starter signature when one is provided. Do not include tests, example invocations, explanations, Markdown fences, TODOs, or placeholder code. Use stable formatting with one statement per line because a later execution trace will reference exact source line numbers.`,
+        config: {
+          abortSignal: options?.signal,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              code: { type: Type.STRING },
+              language: { type: Type.STRING, enum: ['typescript'] }
+            },
+            required: ['code', 'language']
+          }
+        }
+      });
+
+      const finishReason = (response as any)?.candidates?.[0]?.finishReason;
+      if (finishReason === 'MAX_TOKENS') {
+        const error: any = new Error('Gemini solution response was truncated after reaching the model output-token limit.');
+        error.name = 'ProviderTruncationError';
+        throw error;
+      }
+
+      return { data: JSON.parse(response.text || '{}'), raw: response };
+    } catch (error: any) {
+      if (options?.signal?.aborted || error?.name === 'AbortError' || error?.name === 'ProviderTruncationError') {
+        throw error;
+      }
+      const providerError: any = new Error(`Gemini solution generation failed. API error: ${error?.message || 'Unknown provider error'}`);
+      providerError.name = 'ProviderAPIError';
+      throw providerError;
+    }
   }
 
   async coachMessage(problem: StructuredProblem, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions): Promise<AIResponse<CoachMessage>> {
