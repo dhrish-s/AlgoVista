@@ -157,7 +157,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   async generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>> {
-    const isUserCode = code.length > 50; 
+    const isUserCode = options?.sourceLineCount !== undefined || code.length > 50;
     const MAX_STEPS = 50; // Safety limit; must align with DynamicStepGenerator.MAX_STEPS
     
     const prompt = isUserCode 

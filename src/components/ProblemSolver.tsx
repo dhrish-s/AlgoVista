@@ -40,6 +40,8 @@ export const ProblemSolver: React.FC = () => {
     unlockEditor, 
     userCode,
     setUserCode,
+    idealSolutionCache,
+    setIdealVisualization,
     currentSteps,
     setSteps,
     currentStepIndex, 
@@ -63,6 +65,7 @@ export const ProblemSolver: React.FC = () => {
   } = useStore();
 
   const [selectedApproach, setSelectedApproach] = useState<ApproachOption | null>(null);
+  const [lastVisualizationMode, setLastVisualizationMode] = useState<'ideal' | 'user' | null>(null);
   const generationControllerRef = useRef<AbortController | null>(null);
 
   // Auto-select first approach when problem loads
@@ -73,6 +76,7 @@ export const ProblemSolver: React.FC = () => {
     } else {
       setSelectedApproach(null);
     }
+    setLastVisualizationMode(null);
   }, [currentProblem?.id]);
 
   useEffect(() => {
@@ -123,11 +127,17 @@ export const ProblemSolver: React.FC = () => {
     try {
       const testCase = currentProblem.examples[0];
       let steps;
+      let idealCode: string | null = null;
       
       if (useUserCode) {
         steps = await DynamicStepGenerator.generateFromUserCode(currentProblem, userCode, testCase, newController.signal);
       } else if (selectedApproach) {
-        steps = await DynamicStepGenerator.generate(currentProblem, selectedApproach, testCase, newController.signal);
+        idealCode = idealSolutionCache[selectedApproach.id] || null;
+        if (!idealCode) {
+          const generatedSolution = await DynamicStepGenerator.generateSolution(currentProblem, selectedApproach, newController.signal);
+          idealCode = generatedSolution.code;
+        }
+        steps = await DynamicStepGenerator.generate(currentProblem, selectedApproach, idealCode, testCase, newController.signal);
       } else {
         throw new Error("No approach selected.");
       }
@@ -142,7 +152,13 @@ export const ProblemSolver: React.FC = () => {
         setCurrentProvider(providerMeta.provider);
         setProviderStatus(providerMeta.status, providerMeta.message);
       }
-      setSteps(steps);
+      if (useUserCode) {
+        setSteps(steps);
+        setLastVisualizationMode('user');
+      } else if (selectedApproach && idealCode) {
+        setIdealVisualization(selectedApproach.id, idealCode, steps);
+        setLastVisualizationMode('ideal');
+      }
       setIsPlaying(true);
       const rejectedStepCount = Number(generationFeedback?.rejectedStepCount || 0);
       const traceIsLimited = Boolean(generationFeedback?.truncated || rejectedStepCount > 0);
@@ -167,6 +183,8 @@ export const ProblemSolver: React.FC = () => {
         errorMsg = "The provider returned a malformed trace. Regenerate the visualization, or switch providers if this keeps happening.";
       } else if (e.message?.includes('No valid steps found')) {
         errorMsg = "The trace contained no usable execution steps. Try a different approach, smaller test case, or clearer code.";
+      } else if (e.message?.toLowerCase().includes('truncated')) {
+        errorMsg = e.message;
       } else if (e.message?.toLowerCase().includes('timed out')) {
         errorMsg = "Trace generation took too long and was stopped. Try again with a smaller example, or switch AI providers.";
       } else if (e.message?.includes('provider')) {
@@ -396,7 +414,7 @@ export const ProblemSolver: React.FC = () => {
                   <EditorPanel 
                     code={userCode} 
                     setCode={setUserCode} 
-                    onRun={() => currentSteps.length > 0 ? setIsPlaying(!isPlaying) : handleGenerateVisualization(true)}
+                    onRun={() => handleGenerateVisualization(lastVisualizationMode !== 'ideal')}
                     onNext={() => setStepIndex(Math.min(currentSteps.length - 1, currentStepIndex + 1))}
                     onPrev={() => setStepIndex(Math.max(0, currentStepIndex - 1))}
                     onReset={() => { setStepIndex(-1); setIsPlaying(false); }}

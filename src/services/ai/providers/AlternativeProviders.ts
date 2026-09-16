@@ -170,7 +170,7 @@ export class OpenAIProvider implements AIProvider {
 Statement: ${problem.statement}
 Input: ${JSON.stringify(testCase?.input)}
 Expected output: ${JSON.stringify(testCase?.output)}
-Approach or user code:
+${options?.sourceLineCount !== undefined ? 'Exact source code to trace line by line:' : 'Approach or user code:'}
 ${code}`
       }
     ], options);
@@ -352,7 +352,7 @@ export class ClaudeProvider implements AIProvider {
 Statement: ${problem.statement}
 Input: ${JSON.stringify(testCase?.input)}
 Expected output: ${JSON.stringify(testCase?.output)}
-Approach or user code:
+${options?.sourceLineCount !== undefined ? 'Exact source code to trace line by line:' : 'Approach or user code:'}
 ${code}`,
       options,
       CLAUDE_STEP_MAX_TOKENS

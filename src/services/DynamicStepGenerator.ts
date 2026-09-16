@@ -15,15 +15,42 @@ export interface GeneratedExecutionSteps extends Array<ExecutionStep> {
   };
 }
 
+export interface GeneratedIdealSolution {
+  code: string;
+  providerMeta?: GeneratedExecutionSteps['providerMeta'];
+}
+
 export class DynamicStepGenerator {
   private static latestRequestMap: Record<string, number> = {};
+
+  static async generateSolution(
+    problem: StructuredProblem,
+    approach: ApproachOption,
+    signal?: AbortSignal
+  ): Promise<GeneratedIdealSolution> {
+    const aiManager = getAIManager();
+    if (!aiManager) throw new Error('AI Manager not initialized.');
+
+    const key = `${problem.id}:${approach.id}:generateSolution`;
+    DynamicStepGenerator.latestRequestMap[key] = (DynamicStepGenerator.latestRequestMap[key] || 0) + 1;
+    const reqId = DynamicStepGenerator.latestRequestMap[key];
+    const { data, meta } = await aiManager.generateSolution(problem, approach, { task: 'steps', signal });
+
+    if (DynamicStepGenerator.latestRequestMap[key] !== reqId || signal?.aborted) {
+      const error: any = new Error('AbortError');
+      error.name = 'AbortError';
+      throw error;
+    }
+
+    return { code: data.code, providerMeta: meta };
+  }
 
   static async generate(
     problem: StructuredProblem,
     approach: ApproachOption,
+    solutionCode: string,
     testCase: { input: string; output: string },
-    signal?: AbortSignal,
-    sourceLineCount?: number
+    signal?: AbortSignal
   ): Promise<ExecutionStep[]> {
     const aiManager = getAIManager();
     if (!aiManager) throw new Error("AI Manager not initialized.");
@@ -38,7 +65,8 @@ export class DynamicStepGenerator {
       throw err;
     }
 
-    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, approach.explanation, testCase, {
+    const sourceLineCount = solutionCode.split(/\r?\n/).length;
+    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, solutionCode, testCase, {
       task: 'steps',
       signal,
       sourceLineCount

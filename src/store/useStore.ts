@@ -27,6 +27,7 @@ interface AppState {
   providerMessage: string | null;
   
   userCode: string;
+  idealSolutionCache: Record<string, string>;
   userReasoning: string;
   unlockedEditor: boolean;
 
@@ -46,6 +47,7 @@ interface AppState {
   setParseConfidence: (confidence: number) => void;
   setCurrentProblem: (problem: StructuredProblem | null) => void;
   setUserCode: (code: string) => void;
+  setIdealVisualization: (approachId: string, code: string, steps: ExecutionStep[]) => void;
   setSteps: (steps: ExecutionStep[]) => void;
   setStepIndex: (index: number | ((prev: number) => number)) => void;
   setStepGenerationState: (loading: boolean, error: string | null, truncated?: boolean) => void;
@@ -92,6 +94,7 @@ export const useStore = create<AppState>()(
       providerMessage: null,
       
       userCode: '',
+      idealSolutionCache: {},
       userReasoning: '',
       unlockedEditor: false,
 
@@ -116,6 +119,7 @@ export const useStore = create<AppState>()(
         currentSteps: [],
         currentStepIndex: -1,
         userCode: problem?.starterCode || '',
+        idealSolutionCache: {},
         userReasoning: '',
         unlockedEditor: false,
         parseError: null,
@@ -125,6 +129,12 @@ export const useStore = create<AppState>()(
       }),
 
       setUserCode: (code) => set({ userCode: code }),
+      setIdealVisualization: (approachId, code, steps) => set((state) => ({
+        idealSolutionCache: { ...state.idealSolutionCache, [approachId]: code },
+        userCode: code,
+        currentSteps: steps,
+        currentStepIndex: steps.length > 0 ? 0 : -1
+      })),
       setSteps: (steps) => set({
         currentSteps: steps,
         currentStepIndex: steps.length > 0 ? 0 : -1
@@ -164,6 +174,7 @@ export const useStore = create<AppState>()(
         currentProblem: null,
         currentSteps: [],
         currentStepIndex: -1,
+        idealSolutionCache: {},
         userReasoning: '',
         unlockedEditor: false,
         parseError: null,
