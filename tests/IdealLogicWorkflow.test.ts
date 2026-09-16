@@ -48,6 +48,8 @@ test('reuses cached Ideal Logic code and generates new code for another approach
   const originalGenerate = DynamicStepGenerator.generate;
   const generatedApproaches: string[] = [];
   const tracedCode: string[] = [];
+  const firstRunPhases: string[] = [];
+  const rerunPhases: string[] = [];
 
   DynamicStepGenerator.generateSolution = async (_problem, approach) => {
     generatedApproaches.push(approach.id);
@@ -59,8 +61,22 @@ test('reuses cached Ideal Logic code and generates new code for another approach
   };
 
   try {
-    const first = await generateIdealVisualization(problem, stackApproach, undefined, problem.examples[0]);
-    const rerun = await generateIdealVisualization(problem, stackApproach, first.code, problem.examples[0]);
+    const first = await generateIdealVisualization(
+      problem,
+      stackApproach,
+      undefined,
+      problem.examples[0],
+      undefined,
+      (phase) => firstRunPhases.push(phase)
+    );
+    const rerun = await generateIdealVisualization(
+      problem,
+      stackApproach,
+      first.code,
+      problem.examples[0],
+      undefined,
+      (phase) => rerunPhases.push(phase)
+    );
     const switched = await generateIdealVisualization(problem, bruteApproach, undefined, problem.examples[0]);
 
     assert.deepEqual(generatedApproaches, ['stack', 'brute-force']);
@@ -68,6 +84,8 @@ test('reuses cached Ideal Logic code and generates new code for another approach
     assert.equal(rerun.reusedCode, true);
     assert.equal(switched.reusedCode, false);
     assert.deepEqual(tracedCode, [first.code, first.code, switched.code]);
+    assert.deepEqual(firstRunPhases, ['solution', 'trace']);
+    assert.deepEqual(rerunPhases, ['trace']);
   } finally {
     DynamicStepGenerator.generateSolution = originalGenerateSolution;
     DynamicStepGenerator.generate = originalGenerate;

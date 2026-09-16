@@ -67,6 +67,7 @@ export const ProblemSolver: React.FC = () => {
 
   const [selectedApproach, setSelectedApproach] = useState<ApproachOption | null>(null);
   const [lastVisualizationMode, setLastVisualizationMode] = useState<'ideal' | 'user' | null>(null);
+  const [generationPhase, setGenerationPhase] = useState<'idle' | 'solution' | 'trace'>('idle');
   const generationControllerRef = useRef<AbortController | null>(null);
 
   // Auto-select first approach when problem loads
@@ -124,6 +125,7 @@ export const ProblemSolver: React.FC = () => {
 
     setIsPlaying(false);
     setSteps([]);
+    setGenerationPhase(useUserCode ? 'trace' : 'solution');
     setStepGenerationState(true, null, false);
     try {
       const testCase = currentProblem.examples[0];
@@ -138,7 +140,8 @@ export const ProblemSolver: React.FC = () => {
           selectedApproach,
           idealSolutionCache[selectedApproach.id],
           testCase,
-          newController.signal
+          newController.signal,
+          setGenerationPhase
         );
         idealCode = result.code;
         steps = result.steps;
@@ -205,6 +208,7 @@ export const ProblemSolver: React.FC = () => {
     } finally {
       if (generationControllerRef.current === newController) {
         generationControllerRef.current = null;
+        setGenerationPhase('idle');
       }
     }
   };
@@ -353,7 +357,9 @@ export const ProblemSolver: React.FC = () => {
                         className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-bold transition-all disabled:opacity-30"
                       >
                         {isGeneratingSteps ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-white" />}
-                        Ideal Logic
+                        {isGeneratingSteps
+                          ? generationPhase === 'solution' ? 'Generating solution' : 'Generating trace'
+                          : 'Ideal Logic'}
                       </button>
                       <button
                         onClick={() => handleGenerateVisualization(true)}
@@ -361,14 +367,25 @@ export const ProblemSolver: React.FC = () => {
                         className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-full border border-white/5 text-[10px] font-bold transition-all disabled:opacity-30"
                       >
                         {isGeneratingSteps ? <Loader2 className="w-3 h-3 animate-spin" /> : <Code className="w-3 h-3" />}
-                        Sync My Code
+                        {isGeneratingSteps
+                          ? generationPhase === 'solution' ? 'Generating solution' : 'Generating trace'
+                          : 'Sync My Code'}
                       </button>
                     </div>
                   )}
                </div>
 
                <div className="flex-1 flex items-center justify-center relative">
-                  <VisualizerContainer step={activeStep} />
+                   <VisualizerContainer step={activeStep} />
+
+                   {isGeneratingSteps && (
+                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm">
+                       <div className="flex items-center gap-3 rounded-xl border border-indigo-500/20 bg-slate-900 px-5 py-3 text-xs font-bold text-indigo-200 shadow-2xl">
+                         <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+                         {generationPhase === 'solution' ? 'Generating solution' : 'Generating trace'}
+                       </div>
+                     </div>
+                   )}
                   
                   {(stepGenerationError || stepTruncated) && (
                     <motion.div 
