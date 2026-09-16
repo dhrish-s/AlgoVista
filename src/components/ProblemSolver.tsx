@@ -401,6 +401,8 @@ export const ProblemSolver: React.FC = () => {
                     onPrev={() => setStepIndex(Math.max(0, currentStepIndex - 1))}
                     onReset={() => { setStepIndex(-1); setIsPlaying(false); }}
                     currentLine={activeStep?.line || 0}
+                    currentStep={currentStepIndex >= 0 ? currentStepIndex + 1 : 0}
+                    totalSteps={currentSteps.length}
                     isPlaying={isPlaying}
                     setIsPlaying={setIsPlaying}
                   />

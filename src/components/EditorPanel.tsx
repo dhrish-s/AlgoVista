@@ -12,6 +12,8 @@ interface EditorPanelProps {
   onPrev: () => void;
   onReset: () => void;
   currentLine: number;
+  currentStep: number;
+  totalSteps: number;
   isPlaying: boolean;
   setIsPlaying: (playing: boolean) => void;
 }
@@ -52,12 +54,16 @@ const EditorFallback: React.FC<{ message?: string }> = ({ message }) => (
 );
 
 export const EditorPanel: React.FC<EditorPanelProps> = ({
-  code, setCode, onRun, onNext, onPrev, onReset, currentLine, isPlaying, setIsPlaying
+  code, setCode, onRun, onNext, onPrev, onReset, currentLine, currentStep, totalSteps, isPlaying, setIsPlaying
 }) => {
   const editorRef = React.useRef<any>(null);
   const [editorError, setEditorError] = React.useState<string | null>(null);
   const safeCode = typeof code === 'string' ? code : '';
   const safeCurrentLine = Number.isFinite(currentLine) && currentLine > 0 ? Math.floor(currentLine) : 0;
+  const safeTotalSteps = Number.isFinite(totalSteps) && totalSteps > 0 ? Math.floor(totalSteps) : 0;
+  const safeCurrentStep = safeTotalSteps > 0 && Number.isFinite(currentStep)
+    ? Math.min(Math.max(Math.floor(currentStep), 1), safeTotalSteps)
+    : 0;
 
   React.useEffect(() => {
     if (!editorRef.current || safeCurrentLine <= 0) return;
@@ -200,8 +206,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           <Activity className="w-3 h-3 text-indigo-400" />
           <span>EXECUTION: {isPlaying ? 'RUNNING' : 'PAUSED'}</span>
         </div>
-        <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">
-          Step {safeCurrentLine} of logic
+        <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest">
+          <span className="text-indigo-400">Step {safeCurrentStep} of {safeTotalSteps}</span>
+          {safeCurrentLine > 0 && <span className="text-slate-500">Line {safeCurrentLine}</span>}
         </div>
       </div>
     </div>
