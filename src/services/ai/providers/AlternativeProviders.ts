@@ -8,7 +8,8 @@ import {
   CoachMessage,
   AIRequestOptions
 } from '../types';
-import { StructuredProblem, ExecutionStep } from '../../../types';
+import { GeneratedSolution } from '../types';
+import { StructuredProblem, ExecutionStep, ApproachOption } from '../../../types';
 import {
   assertProviderAvailable,
   extractJson,
@@ -169,6 +170,10 @@ ${code}`
     };
   }
 
+  async generateSolution(_problem: StructuredProblem, _approach: ApproachOption, _options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
+    throw new Error('OpenAI solution generation is not implemented yet.');
+  }
+
   async coachMessage(
     problem: StructuredProblem,
     userMessage: string,
@@ -323,6 +328,10 @@ ${code}`,
       data: normalizeSteps(extractJson<ExecutionStep[]>(content, [])),
       raw
     };
+  }
+
+  async generateSolution(_problem: StructuredProblem, _approach: ApproachOption, _options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
+    throw new Error('Claude solution generation is not implemented yet.');
   }
 
   async coachMessage(

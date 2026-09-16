@@ -1,4 +1,4 @@
-import { StructuredProblem, ExecutionStep } from '../../types';
+import { StructuredProblem, ExecutionStep, ApproachOption } from '../../types';
 
 export type AIProviderID = 'gemini' | 'openai' | 'claude';
 
@@ -25,6 +25,11 @@ export interface CodeExplanation {
   summary: string;
   lineByLine: Record<number, string>;
   potentialBugs: string[];
+}
+
+export interface GeneratedSolution {
+  code: string;
+  language: 'typescript';
 }
 
 export interface CoachMessage {
@@ -54,6 +59,7 @@ export interface AIProvider {
   evaluateReasoning(problem: StructuredProblem, reasoning: string, options?: AIRequestOptions): Promise<AIResponse<ReasoningEvaluation>>;
   generateHints(problem: StructuredProblem, userCode: string, options?: AIRequestOptions): Promise<AIResponse<HintGeneration>>;
   explainCode(problem: StructuredProblem, code: string, options?: AIRequestOptions): Promise<AIResponse<CodeExplanation>>;
+  generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>>;
   generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>>;
   coachMessage(problem: StructuredProblem, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions): Promise<AIResponse<CoachMessage>>;
 }

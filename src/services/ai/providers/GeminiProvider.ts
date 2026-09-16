@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIProvider, AIProviderID, AIResponse, ReasoningEvaluation, HintGeneration, CodeExplanation, CoachMessage, AIRequestOptions } from '../types';
-import { StructuredProblem, ExecutionStep } from '../../../types';
+import { StructuredProblem, ExecutionStep, ApproachOption } from '../../../types';
+import { GeneratedSolution } from '../types';
 import { getDefaultModelNames, getProviderApiKey, normalizeProblem } from '../providerConfig';
 
 export class GeminiProvider implements AIProvider {
@@ -436,6 +437,10 @@ export class GeminiProvider implements AIProvider {
     });
 
     return { data: JSON.parse(response.text || '[]') };
+  }
+
+  async generateSolution(_problem: StructuredProblem, _approach: ApproachOption, _options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
+    throw new Error('Gemini solution generation is not implemented yet.');
   }
 
   async coachMessage(problem: StructuredProblem, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions): Promise<AIResponse<CoachMessage>> {

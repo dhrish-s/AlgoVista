@@ -3,6 +3,7 @@ import { GeminiProvider } from './providers/GeminiProvider';
 import { OpenAIProvider, ClaudeProvider } from './providers/AlternativeProviders';
 import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider, getProviderAvailability } from './providerConfig';
 import { validateExecutionSteps } from '../ExecutionStepValidator';
+import { validateGeneratedSolution } from '../GeneratedSolutionValidator';
 
 export class AIProviderManager {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
@@ -70,6 +71,17 @@ export class AIProviderManager {
 
   async explainCode(problem: any, code: string, options?: AIRequestOptions) {
     return this.executeWithRetry((provider, providerOptions) => provider.explainCode(problem, code, providerOptions), options);
+  }
+
+  async generateSolution(problem: any, approach: any, options?: AIRequestOptions) {
+    return this.executeWithRetry(async (provider, providerOptions) => {
+      const response = await provider.generateSolution(problem, approach, providerOptions);
+      const validation = validateGeneratedSolution(response.data);
+      if ('error' in validation) {
+        throw new Error(`Invalid generated solution: ${validation.error}`);
+      }
+      return { ...response, data: validation.solution };
+    }, options);
   }
 
   async generateSteps(problem: any, code: string, testCase: any, options?: AIRequestOptions) {
