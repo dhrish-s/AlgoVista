@@ -8,6 +8,7 @@ import { CoachPanel } from './CoachPanel';
 import { EditorPanel } from './EditorPanel';
 import { VisualizerContainer } from './visualizer/VisualizerContainer';
 import { DynamicStepGenerator } from '../services/DynamicStepGenerator';
+import { generateIdealVisualization } from '../services/IdealLogicService';
 
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { MiniExecutionWindow } from './MiniExecutionWindow';
@@ -132,12 +133,15 @@ export const ProblemSolver: React.FC = () => {
       if (useUserCode) {
         steps = await DynamicStepGenerator.generateFromUserCode(currentProblem, userCode, testCase, newController.signal);
       } else if (selectedApproach) {
-        idealCode = idealSolutionCache[selectedApproach.id] || null;
-        if (!idealCode) {
-          const generatedSolution = await DynamicStepGenerator.generateSolution(currentProblem, selectedApproach, newController.signal);
-          idealCode = generatedSolution.code;
-        }
-        steps = await DynamicStepGenerator.generate(currentProblem, selectedApproach, idealCode, testCase, newController.signal);
+        const result = await generateIdealVisualization(
+          currentProblem,
+          selectedApproach,
+          idealSolutionCache[selectedApproach.id],
+          testCase,
+          newController.signal
+        );
+        idealCode = result.code;
+        steps = result.steps;
       } else {
         throw new Error("No approach selected.");
       }

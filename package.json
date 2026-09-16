@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "tsx --test tests/ExecutionStepValidator.test.ts tests/AIProviderManager.test.ts tests/VisualizerContracts.test.ts tests/PersistedStateMigration.test.ts tests/ProviderAdapters.test.ts tests/GeneratedSolutionValidator.test.ts"
+    "test": "tsx --test tests/ExecutionStepValidator.test.ts tests/AIProviderManager.test.ts tests/VisualizerContracts.test.ts tests/PersistedStateMigration.test.ts tests/ProviderAdapters.test.ts tests/GeneratedSolutionValidator.test.ts tests/IdealLogicWorkflow.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

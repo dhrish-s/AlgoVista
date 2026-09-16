@@ -424,3 +424,117 @@ test('Gemini prompt and schema require compact DP table deltas', async () => {
   assert.equal(visualProperties.dpTableDelta.properties.activeCell.nullable, true);
   assert.ok(visualProperties.dpTableDelta.properties.highlightedCells);
 });
+
+test('solution adapters request structured TypeScript tied to the selected approach', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const problem = {
+    title: 'Valid Parentheses',
+    statement: 'Validate matching brackets.',
+    constraints: ['1 <= s.length <= 100'],
+    starterCode: 'function isValid(s: string): boolean {}'
+  } as never;
+  const approach = {
+    id: 'stack',
+    name: 'Stack-based Matching',
+    explanation: 'Use a stack.',
+    complexity: { time: 'O(n)', space: 'O(n)' },
+    isOptimal: true
+  } as never;
+  const responseText = JSON.stringify({
+    code: 'function isValid(s: string): boolean {\n  return true;\n}',
+    language: 'typescript'
+  });
+  const originalFetch = globalThis.fetch;
+  const bodies: Record<string, any>[] = [];
+  globalThis.fetch = async (input, init) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify(String(input).includes('anthropic.com')
+      ? { content: [{ type: 'text', text: responseText }], stop_reason: 'end_turn' }
+      : { choices: [{ message: { content: responseText }, finish_reason: 'stop' }] }
+    ), { status: 200 });
+  };
+
+  try {
+    await new OpenAIProvider().generateSolution(problem, approach);
+    await new ClaudeProvider().generateSolution(problem, approach);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(bodies[0].response_format, { type: 'json_object' });
+  assert.match(bodies[0].messages[0].content, /complete TypeScript solution/);
+  assert.match(bodies[0].messages[1].content, /Stack-based Matching/);
+  assert.equal(bodies[1].max_tokens, 4096);
+  assert.match(bodies[1].system, /complete TypeScript solution/);
+  assert.match(bodies[1].messages[0].content, /Stack-based Matching/);
+});
+
+test('Claude reports solution truncation before parsing incomplete code JSON', async () => {
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    content: [{ type: 'text', text: '{"code":"function unfinished' }],
+    stop_reason: 'max_tokens'
+  }), { status: 200 });
+
+  try {
+    await assert.rejects(
+      new ClaudeProvider().generateSolution(
+        { title: 'Test', statement: 'Test', constraints: [] } as never,
+        { name: 'Approach', explanation: 'Solve it.' } as never
+      ),
+      /truncated after reaching the 4,096-token output limit/
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('OpenAI reports a length-limited solution response as truncation', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    choices: [{
+      message: { content: '{"code":"partial","language":"typescript"}' },
+      finish_reason: 'length'
+    }]
+  }), { status: 200 });
+
+  try {
+    await assert.rejects(
+      new OpenAIProvider().generateSolution(
+        { title: 'Test', statement: 'Test', constraints: [] } as never,
+        { name: 'Approach', explanation: 'Solve it.' } as never
+      ),
+      /truncated after reaching the model output-token limit/
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Gemini solution generation uses a strict TypeScript response schema', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, any> | undefined;
+  (provider as any).ai = {
+    models: {
+      generateContent: async (value: Record<string, any>) => {
+        request = value;
+        return {
+          text: JSON.stringify({ code: 'function solve() {\n  return true;\n}', language: 'typescript' }),
+          candidates: [{ finishReason: 'STOP' }]
+        };
+      }
+    }
+  };
+
+  await provider.generateSolution(
+    { title: 'Test', statement: 'Test', constraints: [] } as never,
+    { name: 'Stack', explanation: 'Use a stack.' } as never
+  );
+
+  assert.match(request?.contents || '', /complete TypeScript solution/);
+  assert.deepEqual(request?.config?.responseSchema?.required, ['code', 'language']);
+  assert.deepEqual(request?.config?.responseSchema?.properties?.language?.enum, ['typescript']);
+});

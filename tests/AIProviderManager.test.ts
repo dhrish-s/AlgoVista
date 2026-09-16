@@ -251,3 +251,49 @@ test('keeps caller cancellation distinct from a provider timeout', async () => {
   );
   assert.equal(fallback.getCalls(), 0);
 });
+
+test('falls back when generated solution code is malformed', async () => {
+  const primary = {
+    id: 'openai',
+    generateSolution: async () => ({ data: { code: '', language: 'typescript' } })
+  } as unknown as AIProvider;
+  const fallback = {
+    id: 'claude',
+    generateSolution: async () => ({
+      data: { code: 'function solve(): boolean {\n  return true;\n}', language: 'typescript' }
+    })
+  } as unknown as AIProvider;
+  const manager = createManager(primary, fallback);
+
+  const response = await manager.generateSolution({}, {}, { task: 'steps' });
+
+  assert.equal(response.meta?.provider, 'claude');
+  assert.equal(response.meta?.status, 'fallback');
+  assert.match(response.data.code, /function solve/);
+});
+
+test('aborts timed-out solution generation and continues to fallback', async () => {
+  let primarySignalWasAborted = false;
+  const primary = {
+    id: 'openai',
+    generateSolution: async (_problem: unknown, _approach: unknown, options?: { signal?: AbortSignal }) => {
+      options?.signal?.addEventListener('abort', () => {
+        primarySignalWasAborted = true;
+      });
+      return new Promise<never>(() => {});
+    }
+  } as unknown as AIProvider;
+  const fallback = {
+    id: 'claude',
+    generateSolution: async () => ({
+      data: { code: 'function solve(): boolean {\n  return true;\n}', language: 'typescript' }
+    })
+  } as unknown as AIProvider;
+  const manager = createManager(primary, fallback);
+
+  const response = await manager.generateSolution({}, {}, { task: 'steps', timeoutMs: 10 });
+
+  assert.equal(primarySignalWasAborted, true);
+  assert.equal(response.meta?.provider, 'claude');
+  assert.equal(response.meta?.status, 'fallback');
+});
