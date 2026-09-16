@@ -45,6 +45,12 @@ For dynamic programming algorithms, use a compact base-and-delta trace. The firs
 For linked-list algorithms and pointer traversal or manipulation over a linked list, use a compact base-and-delta trace. The first linked-list step's visualState must contain linkedListBase with nodes shaped as { id, value, nextId } and headId, plus linkedListDelta. Every later linked-list step must contain only linkedListDelta and must not repeat linkedListBase or a full linkedList snapshot. A linkedListDelta may use nextUpdates shaped as { id, nextId }, headId (string or null), activeNodeId (string or null), and highlightedNodeIds. Every nextId must be an existing stable node id or null. Keep headId synchronized with the current structure, use null explicitly for null-terminated tails, and make each visualization state match that step's explanation after its described operations. For reversal, removal, and merge algorithms, most structural steps should include the actual pointer change in nextUpdates; this is expected and must not be omitted merely to make the trace smaller. Represent a cycle by pointing nextId back to an existing node, never by duplicating nodes. Use {} only when nothing changes visually. Use another visualization type when a linked list is not the algorithm's meaningful state.
 Use no more than 50 logical steps. Do not include markdown.`;
 
+const SOLUTION_INSTRUCTIONS = `Generate a complete TypeScript solution for the supplied algorithm problem and selected approach.
+Return only a JSON object shaped as { "code": string, "language": "typescript" }.
+Preserve the supplied starter signature when one is available.
+Do not include tests, example invocations, explanations, Markdown fences, TODOs, or placeholder code.
+Use stable formatting with one statement per line because a later execution trace will reference exact source line numbers.`;
+
 const COACH_INSTRUCTIONS = `You are AlgoVista's reasoning coach.
 Never provide direct code. Ask concise Socratic questions and give minimal hints focused on pattern recognition, constraints, edge cases, and complexity.`;
 
@@ -95,7 +101,11 @@ const safeUnsupported = <T>(providerId: AIProviderID, data: T): AIResponse<T> =>
 export class OpenAIProvider implements AIProvider {
   id: AIProviderID = 'openai';
 
-  private async requestText(messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, options?: AIRequestOptions): Promise<any> {
+  private async requestText(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: AIRequestOptions,
+    jsonObject: boolean = false
+  ): Promise<any> {
     assertProviderAvailable(this.id);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -107,7 +117,8 @@ export class OpenAIProvider implements AIProvider {
       },
       body: JSON.stringify({
         model: options?.model || 'gpt-4o-mini',
-        messages
+        messages,
+        ...(jsonObject ? { response_format: { type: 'json_object' } } : {})
       })
     });
 
@@ -170,8 +181,31 @@ ${code}`
     };
   }
 
-  async generateSolution(_problem: StructuredProblem, _approach: ApproachOption, _options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
-    throw new Error('OpenAI solution generation is not implemented yet.');
+  async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
+    const { content, raw } = await this.requestText([
+      { role: 'system', content: SOLUTION_INSTRUCTIONS },
+      {
+        role: 'user',
+        content: `Problem: ${problem.title}
+Statement: ${problem.statement}
+Constraints: ${problem.constraints.join('\n')}
+Selected approach: ${approach.name}
+Approach details: ${approach.explanation}
+Starter signature, when available:
+${problem.starterCode || 'No starter signature was provided.'}`
+      }
+    ], options, true);
+
+    if (raw?.choices?.[0]?.finish_reason === 'length') {
+      const error: any = new Error('OpenAI solution response was truncated after reaching the model output-token limit.');
+      error.name = 'ProviderTruncationError';
+      throw error;
+    }
+
+    return {
+      data: extractJson<GeneratedSolution>(content, {} as GeneratedSolution),
+      raw
+    };
   }
 
   async coachMessage(
