@@ -138,7 +138,7 @@ export const ProblemSolver: React.FC = () => {
         const result = await generateIdealVisualization(
           currentProblem,
           selectedApproach,
-          idealSolutionCache[selectedApproach.id],
+          idealSolutionCache[selectedApproach.id]?.typescript,
           testCase,
           newController.signal,
           setGenerationPhase

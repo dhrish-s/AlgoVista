@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { StructuredProblem, UserState, ExecutionStep } from '../types';
-import { AIProviderID, AIProviderSettings } from '../services/ai/types';
+import { AIProviderID, AIProviderSettings, SolutionLanguage } from '../services/ai/types';
+import { DEFAULT_SOLUTION_LANGUAGE } from '../services/ai/solutionLanguages';
 import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider } from '../services/ai/providerConfig';
 import { ALGOVISTA_STORAGE_VERSION, migratePersistedState } from './persistedStateMigration';
 
@@ -27,7 +28,7 @@ interface AppState {
   providerMessage: string | null;
   
   userCode: string;
-  idealSolutionCache: Record<string, string>;
+  idealSolutionCache: Record<string, Partial<Record<SolutionLanguage, string>>>;
   userReasoning: string;
   unlockedEditor: boolean;
 
@@ -47,7 +48,7 @@ interface AppState {
   setParseConfidence: (confidence: number) => void;
   setCurrentProblem: (problem: StructuredProblem | null) => void;
   setUserCode: (code: string) => void;
-  setIdealVisualization: (approachId: string, code: string, steps: ExecutionStep[]) => void;
+  setIdealVisualization: (approachId: string, code: string, steps: ExecutionStep[], language?: SolutionLanguage) => void;
   setSteps: (steps: ExecutionStep[]) => void;
   setStepIndex: (index: number | ((prev: number) => number)) => void;
   setStepGenerationState: (loading: boolean, error: string | null, truncated?: boolean) => void;
@@ -129,8 +130,11 @@ export const useStore = create<AppState>()(
       }),
 
       setUserCode: (code) => set({ userCode: code }),
-      setIdealVisualization: (approachId, code, steps) => set((state) => ({
-        idealSolutionCache: { ...state.idealSolutionCache, [approachId]: code },
+      setIdealVisualization: (approachId, code, steps, language = DEFAULT_SOLUTION_LANGUAGE) => set((state) => ({
+        idealSolutionCache: {
+          ...state.idealSolutionCache,
+          [approachId]: { ...state.idealSolutionCache[approachId], [language]: code }
+        },
         userCode: code,
         currentSteps: steps,
         currentStepIndex: steps.length > 0 ? 0 : -1

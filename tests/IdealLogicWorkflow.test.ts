@@ -97,7 +97,7 @@ test('stores Ideal Logic code, approach cache, steps, and index atomically', () 
   useStore.getState().setIdealVisualization('stack', 'function solve() {}', steps);
 
   const state = useStore.getState();
-  assert.equal(state.idealSolutionCache.stack, 'function solve() {}');
+  assert.equal(state.idealSolutionCache.stack?.typescript, 'function solve() {}');
   assert.equal(state.userCode, 'function solve() {}');
   assert.equal(state.currentSteps, steps);
   assert.equal(state.currentStepIndex, 0);
