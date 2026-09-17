@@ -66,6 +66,7 @@ test('reuses cached Ideal Logic code and generates new code for another approach
       stackApproach,
       undefined,
       problem.examples[0],
+      'typescript',
       undefined,
       (phase) => firstRunPhases.push(phase)
     );
@@ -74,10 +75,17 @@ test('reuses cached Ideal Logic code and generates new code for another approach
       stackApproach,
       first.code,
       problem.examples[0],
+      'typescript',
       undefined,
       (phase) => rerunPhases.push(phase)
     );
-    const switched = await generateIdealVisualization(problem, bruteApproach, undefined, problem.examples[0]);
+    const switched = await generateIdealVisualization(
+      problem,
+      bruteApproach,
+      undefined,
+      problem.examples[0],
+      'typescript'
+    );
 
     assert.deepEqual(generatedApproaches, ['stack', 'brute-force']);
     assert.equal(rerun.code, first.code);

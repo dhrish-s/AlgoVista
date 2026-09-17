@@ -1,6 +1,8 @@
 import { StructuredProblem, ExecutionStep, ApproachOption } from '../types';
 import { getAIManager } from './ai/AIProviderManager';
 import { validateExecutionSteps } from './ExecutionStepValidator';
+import { SolutionLanguage } from './ai/types';
+import { DEFAULT_SOLUTION_LANGUAGE } from './ai/solutionLanguages';
 
 export interface GeneratedExecutionSteps extends Array<ExecutionStep> {
   generationFeedback?: {
@@ -26,15 +28,20 @@ export class DynamicStepGenerator {
   static async generateSolution(
     problem: StructuredProblem,
     approach: ApproachOption,
+    language: SolutionLanguage = DEFAULT_SOLUTION_LANGUAGE,
     signal?: AbortSignal
   ): Promise<GeneratedIdealSolution> {
     const aiManager = getAIManager();
     if (!aiManager) throw new Error('AI Manager not initialized.');
 
-    const key = `${problem.id}:${approach.id}:generateSolution`;
+    const key = `${problem.id}:${approach.id}:${language}:generateSolution`;
     DynamicStepGenerator.latestRequestMap[key] = (DynamicStepGenerator.latestRequestMap[key] || 0) + 1;
     const reqId = DynamicStepGenerator.latestRequestMap[key];
-    const { data, meta } = await aiManager.generateSolution(problem, approach, { task: 'steps', signal });
+    const { data, meta } = await aiManager.generateSolution(problem, approach, {
+      task: 'steps',
+      signal,
+      solutionLanguage: language
+    });
 
     if (DynamicStepGenerator.latestRequestMap[key] !== reqId || signal?.aborted) {
       const error: any = new Error('AbortError');

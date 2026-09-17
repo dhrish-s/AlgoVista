@@ -139,8 +139,9 @@ export const ProblemSolver: React.FC = () => {
         const result = await generateIdealVisualization(
           currentProblem,
           selectedApproach,
-          idealSolutionCache[selectedApproach.id]?.typescript,
+          idealSolutionCache[selectedApproach.id]?.[solutionLanguage],
           testCase,
+          solutionLanguage,
           newController.signal,
           setGenerationPhase
         );
@@ -164,7 +165,7 @@ export const ProblemSolver: React.FC = () => {
         setSteps(steps);
         setLastVisualizationMode('user');
       } else if (selectedApproach && idealCode) {
-        setIdealVisualization(selectedApproach.id, idealCode, steps);
+        setIdealVisualization(selectedApproach.id, idealCode, steps, solutionLanguage);
         setLastVisualizationMode('ideal');
       }
       setIsPlaying(true);

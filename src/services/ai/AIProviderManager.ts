@@ -4,6 +4,7 @@ import { OpenAIProvider, ClaudeProvider } from './providers/AlternativeProviders
 import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider, getProviderAvailability } from './providerConfig';
 import { validateExecutionSteps } from '../ExecutionStepValidator';
 import { validateGeneratedSolution } from '../GeneratedSolutionValidator';
+import { DEFAULT_SOLUTION_LANGUAGE } from './solutionLanguages';
 
 export class AIProviderManager {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
@@ -74,9 +75,10 @@ export class AIProviderManager {
   }
 
   async generateSolution(problem: any, approach: any, options?: AIRequestOptions) {
+    const solutionLanguage = options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE;
     return this.executeWithRetry(async (provider, providerOptions) => {
       const response = await provider.generateSolution(problem, approach, providerOptions);
-      const validation = validateGeneratedSolution(response.data);
+      const validation = validateGeneratedSolution(response.data, solutionLanguage);
       if ('error' in validation) {
         throw new Error(`Invalid generated solution: ${validation.error}`);
       }
