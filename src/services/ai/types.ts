@@ -1,6 +1,7 @@
 import { StructuredProblem, ExecutionStep, ApproachOption } from '../../types';
 
 export type AIProviderID = 'gemini' | 'openai' | 'claude';
+export type SolutionLanguage = 'typescript' | 'python' | 'cpp' | 'java' | 'c' | 'ruby';
 
 export interface AIProviderSettings {
   defaultProvider: AIProviderID;
@@ -29,7 +30,7 @@ export interface CodeExplanation {
 
 export interface GeneratedSolution {
   code: string;
-  language: 'typescript';
+  language: SolutionLanguage;
 }
 
 export interface CoachMessage {
