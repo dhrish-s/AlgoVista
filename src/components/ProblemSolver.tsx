@@ -40,6 +40,7 @@ export const ProblemSolver: React.FC = () => {
     setUserReasoning, 
     unlockEditor, 
     userCode,
+    solutionLanguage,
     setUserCode,
     idealSolutionCache,
     setIdealVisualization,
@@ -434,6 +435,7 @@ export const ProblemSolver: React.FC = () => {
                   )}
                   <EditorPanel 
                     code={userCode} 
+                    language={solutionLanguage}
                     setCode={setUserCode} 
                     onRun={() => handleGenerateVisualization(lastVisualizationMode !== 'ideal')}
                     onNext={() => setStepIndex(Math.min(currentSteps.length - 1, currentStepIndex + 1))}

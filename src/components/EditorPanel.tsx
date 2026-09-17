@@ -3,9 +3,12 @@ import React from 'react';
 import Editor from '@monaco-editor/react';
 import { Play, SkipForward, SkipBack, RotateCcw, Info, Pause, Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { SolutionLanguage } from '../services/ai/types';
+import { SOLUTION_LANGUAGE_METADATA } from '../services/ai/solutionLanguages';
 
 interface EditorPanelProps {
   code: string;
+  language: SolutionLanguage;
   setCode: (code: string) => void;
   onRun: () => void;
   onNext: () => void;
@@ -54,11 +57,12 @@ const EditorFallback: React.FC<{ message?: string }> = ({ message }) => (
 );
 
 export const EditorPanel: React.FC<EditorPanelProps> = ({
-  code, setCode, onRun, onNext, onPrev, onReset, currentLine, currentStep, totalSteps, isPlaying, setIsPlaying
+  code, language, setCode, onRun, onNext, onPrev, onReset, currentLine, currentStep, totalSteps, isPlaying, setIsPlaying
 }) => {
   const editorRef = React.useRef<any>(null);
   const [editorError, setEditorError] = React.useState<string | null>(null);
   const safeCode = typeof code === 'string' ? code : '';
+  const languageMetadata = SOLUTION_LANGUAGE_METADATA[language];
   const safeCurrentLine = Number.isFinite(currentLine) && currentLine > 0 ? Math.floor(currentLine) : 0;
   const safeTotalSteps = Number.isFinite(totalSteps) && totalSteps > 0 ? Math.floor(totalSteps) : 0;
   const safeCurrentStep = safeTotalSteps > 0 && Number.isFinite(currentStep)
@@ -112,7 +116,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             <div className="w-3 h-3 rounded-full bg-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.3)]" />
             <div className="w-3 h-3 rounded-full bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
           </div>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-4">solution.ts</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-4">
+            solution.{languageMetadata.fileExtension}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -167,7 +173,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           <EditorErrorBoundary>
             <Editor
               height="100%"
-              defaultLanguage="typescript"
+              language={languageMetadata.monacoLanguage}
               theme="vs-dark"
               value={safeCode}
               onChange={(val) => setCode(typeof val === 'string' ? val : '')}
