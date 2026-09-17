@@ -9,6 +9,8 @@ import { EditorPanel } from './EditorPanel';
 import { VisualizerContainer } from './visualizer/VisualizerContainer';
 import { DynamicStepGenerator } from '../services/DynamicStepGenerator';
 import { generateIdealVisualization } from '../services/IdealLogicService';
+import { SolutionLanguage } from '../services/ai/types';
+import { ENABLED_SOLUTION_LANGUAGES, SOLUTION_LANGUAGE_METADATA } from '../services/ai/solutionLanguages';
 
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { MiniExecutionWindow } from './MiniExecutionWindow';
@@ -41,6 +43,7 @@ export const ProblemSolver: React.FC = () => {
     unlockEditor, 
     userCode,
     solutionLanguage,
+    setSolutionLanguage,
     setUserCode,
     idealSolutionCache,
     setIdealVisualization,
@@ -312,6 +315,23 @@ export const ProblemSolver: React.FC = () => {
                    </div>
                  )}
                </div>
+               <label className="flex flex-col gap-2">
+                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                   Solution Language
+                 </span>
+                 <select
+                   value={solutionLanguage}
+                   onChange={(event) => setSolutionLanguage(event.target.value as SolutionLanguage)}
+                   disabled={isGeneratingSteps}
+                   className="w-full rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2.5 text-xs font-semibold text-slate-200 outline-none transition-colors focus:border-indigo-500 disabled:opacity-50"
+                 >
+                   {ENABLED_SOLUTION_LANGUAGES.map((language) => (
+                     <option key={language} value={language}>
+                       {SOLUTION_LANGUAGE_METADATA[language].label}
+                     </option>
+                   ))}
+                 </select>
+               </label>
             </section>
 
             <section className="flex flex-col gap-4">
