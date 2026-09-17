@@ -29,6 +29,7 @@ interface AppState {
   
   userCode: string;
   solutionLanguage: SolutionLanguage;
+  userCodeDrafts: Partial<Record<SolutionLanguage, string>>;
   idealSolutionCache: Record<string, Partial<Record<SolutionLanguage, string>>>;
   userReasoning: string;
   unlockedEditor: boolean;
@@ -98,6 +99,7 @@ export const useStore = create<AppState>()(
       
       userCode: '',
       solutionLanguage: DEFAULT_SOLUTION_LANGUAGE,
+      userCodeDrafts: {},
       idealSolutionCache: {},
       userReasoning: '',
       unlockedEditor: false,
@@ -123,6 +125,10 @@ export const useStore = create<AppState>()(
         currentSteps: [],
         currentStepIndex: -1,
         userCode: problem?.starterCode || '',
+        solutionLanguage: DEFAULT_SOLUTION_LANGUAGE,
+        userCodeDrafts: problem?.starterCode
+          ? { [DEFAULT_SOLUTION_LANGUAGE]: problem.starterCode }
+          : {},
         idealSolutionCache: {},
         userReasoning: '',
         unlockedEditor: false,
@@ -132,14 +138,25 @@ export const useStore = create<AppState>()(
         stepTruncated: false
       }),
 
-      setUserCode: (code) => set({ userCode: code }),
-      setSolutionLanguage: (solutionLanguage) => set({ solutionLanguage }),
+      setUserCode: (code) => set((state) => ({
+        userCode: code,
+        userCodeDrafts: { ...state.userCodeDrafts, [state.solutionLanguage]: code }
+      })),
+      setSolutionLanguage: (solutionLanguage) => set((state) => ({
+        solutionLanguage,
+        userCode: state.userCodeDrafts[solutionLanguage]
+          ?? (solutionLanguage === DEFAULT_SOLUTION_LANGUAGE ? state.currentProblem?.starterCode || '' : ''),
+        currentSteps: [],
+        currentStepIndex: -1,
+        isPlaying: false
+      })),
       setIdealVisualization: (approachId, code, steps, language = DEFAULT_SOLUTION_LANGUAGE) => set((state) => ({
         idealSolutionCache: {
           ...state.idealSolutionCache,
           [approachId]: { ...state.idealSolutionCache[approachId], [language]: code }
         },
         userCode: code,
+        userCodeDrafts: { ...state.userCodeDrafts, [language]: code },
         currentSteps: steps,
         currentStepIndex: steps.length > 0 ? 0 : -1
       })),
@@ -183,6 +200,8 @@ export const useStore = create<AppState>()(
         currentSteps: [],
         currentStepIndex: -1,
         idealSolutionCache: {},
+        userCode: '',
+        userCodeDrafts: {},
         userReasoning: '',
         unlockedEditor: false,
         parseError: null,
@@ -199,6 +218,8 @@ export const useStore = create<AppState>()(
       partialize: (state) => ({
         currentProblem: state.currentProblem,
         userCode: state.userCode,
+        solutionLanguage: state.solutionLanguage,
+        userCodeDrafts: state.userCodeDrafts,
         userReasoning: state.userReasoning,
         unlockedEditor: state.unlockedEditor,
         aiSettings: state.aiSettings,
