@@ -28,6 +28,7 @@ interface AppState {
   providerMessage: string | null;
   
   userCode: string;
+  solutionLanguage: SolutionLanguage;
   idealSolutionCache: Record<string, Partial<Record<SolutionLanguage, string>>>;
   userReasoning: string;
   unlockedEditor: boolean;
@@ -48,6 +49,7 @@ interface AppState {
   setParseConfidence: (confidence: number) => void;
   setCurrentProblem: (problem: StructuredProblem | null) => void;
   setUserCode: (code: string) => void;
+  setSolutionLanguage: (language: SolutionLanguage) => void;
   setIdealVisualization: (approachId: string, code: string, steps: ExecutionStep[], language?: SolutionLanguage) => void;
   setSteps: (steps: ExecutionStep[]) => void;
   setStepIndex: (index: number | ((prev: number) => number)) => void;
@@ -95,6 +97,7 @@ export const useStore = create<AppState>()(
       providerMessage: null,
       
       userCode: '',
+      solutionLanguage: DEFAULT_SOLUTION_LANGUAGE,
       idealSolutionCache: {},
       userReasoning: '',
       unlockedEditor: false,
@@ -130,6 +133,7 @@ export const useStore = create<AppState>()(
       }),
 
       setUserCode: (code) => set({ userCode: code }),
+      setSolutionLanguage: (solutionLanguage) => set({ solutionLanguage }),
       setIdealVisualization: (approachId, code, steps, language = DEFAULT_SOLUTION_LANGUAGE) => set((state) => ({
         idealSolutionCache: {
           ...state.idealSolutionCache,
