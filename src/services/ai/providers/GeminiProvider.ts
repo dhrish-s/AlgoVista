@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AIProvider, AIProviderID, AIResponse, ReasoningEvaluation, HintGeneration, CodeExplanation, CoachMessage, AIRequestOptions } from '../types';
 import { StructuredProblem, ExecutionStep, ApproachOption } from '../../../types';
 import { GeneratedSolution } from '../types';
+import { DEFAULT_SOLUTION_LANGUAGE, SOLUTION_LANGUAGE_METADATA } from '../solutionLanguages';
 import { getDefaultModelNames, getProviderApiKey, normalizeProblem } from '../providerConfig';
 
 export class GeminiProvider implements AIProvider {
@@ -157,12 +158,16 @@ export class GeminiProvider implements AIProvider {
   }
 
   async generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>> {
-    const isUserCode = options?.sourceLineCount !== undefined || code.length > 50;
+    const isUserCode = options?.sourceLineCount !== undefined;
+    const sourceLanguage = SOLUTION_LANGUAGE_METADATA[
+      options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE
+    ].label;
     const MAX_STEPS = 50; // Safety limit; must align with DynamicStepGenerator.MAX_STEPS
     
     const prompt = isUserCode 
       ? `Generate a visualization trace for this USER CODE (maybe partial/broken) for problem "${problem.title}". 
-         Input: ${JSON.stringify(testCase.input)}. 
+         Input: ${JSON.stringify(testCase.input)}.
+         Source language: ${sourceLanguage}.
          Code: \n${code}\n
          ONLY visualize their actual logic.
          LIMIT the trace to EXACTLY ${MAX_STEPS} logical steps maximum. Do not exceed this.

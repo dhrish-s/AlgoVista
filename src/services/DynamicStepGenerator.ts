@@ -110,12 +110,13 @@ export class DynamicStepGenerator {
     problem: StructuredProblem,
     userCode: string,
     testCase: { input: string; output: string },
+    language: SolutionLanguage = DEFAULT_SOLUTION_LANGUAGE,
     signal?: AbortSignal
   ): Promise<ExecutionStep[]> {
     const aiManager = getAIManager();
     if (!aiManager) throw new Error("AI Manager not initialized.");
 
-    const key = `${problem.id}:generateFromUserCode`;
+    const key = `${problem.id}:${language}:generateFromUserCode`;
     DynamicStepGenerator.latestRequestMap[key] = (DynamicStepGenerator.latestRequestMap[key] || 0) + 1;
     const reqId = DynamicStepGenerator.latestRequestMap[key];
 
@@ -125,7 +126,13 @@ export class DynamicStepGenerator {
       throw err;
     }
 
-    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, userCode, testCase, { task: 'steps', signal });
+    const sourceLineCount = userCode.split(/\r?\n/).length;
+    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, userCode, testCase, {
+      task: 'steps',
+      signal,
+      sourceLineCount,
+      solutionLanguage: language
+    });
 
     if (DynamicStepGenerator.latestRequestMap[key] !== reqId) {
       const err: any = new Error('AbortError');
@@ -134,7 +141,7 @@ export class DynamicStepGenerator {
     }
 
     // Validate and sanitize returned steps
-    const validation = validateExecutionSteps(rawSteps);
+    const validation = validateExecutionSteps(rawSteps, { sourceLineCount });
     if (!validation.valid) {
       throw new Error(`Invalid step trace: ${validation.error}`);
     }

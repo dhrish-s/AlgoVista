@@ -9,6 +9,7 @@ import {
   AIRequestOptions
 } from '../types';
 import { GeneratedSolution } from '../types';
+import { DEFAULT_SOLUTION_LANGUAGE, SOLUTION_LANGUAGE_METADATA } from '../solutionLanguages';
 import { StructuredProblem, ExecutionStep, ApproachOption } from '../../../types';
 import {
   assertProviderAvailable,
@@ -170,6 +171,7 @@ export class OpenAIProvider implements AIProvider {
 Statement: ${problem.statement}
 Input: ${JSON.stringify(testCase?.input)}
 Expected output: ${JSON.stringify(testCase?.output)}
+${options?.sourceLineCount !== undefined ? `Source language: ${SOLUTION_LANGUAGE_METADATA[options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE].label}` : ''}
 ${options?.sourceLineCount !== undefined ? 'Exact source code to trace line by line:' : 'Approach or user code:'}
 ${code}`
       }
@@ -352,6 +354,7 @@ export class ClaudeProvider implements AIProvider {
 Statement: ${problem.statement}
 Input: ${JSON.stringify(testCase?.input)}
 Expected output: ${JSON.stringify(testCase?.output)}
+${options?.sourceLineCount !== undefined ? `Source language: ${SOLUTION_LANGUAGE_METADATA[options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE].label}` : ''}
 ${options?.sourceLineCount !== undefined ? 'Exact source code to trace line by line:' : 'Approach or user code:'}
 ${code}`,
       options,

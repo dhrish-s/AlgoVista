@@ -137,7 +137,7 @@ test('Sync My Code traces existing code without generating an Ideal Logic soluti
   providers.set('openai', provider);
   const existingCode = 'function isValid(s: string): boolean {\n  return s.length > 0;\n}';
 
-  await DynamicStepGenerator.generateFromUserCode(problem, existingCode, problem.examples[0]);
+  await DynamicStepGenerator.generateFromUserCode(problem, existingCode, problem.examples[0], 'typescript');
 
   assert.equal(solutionCalls, 0);
   assert.equal(tracedCode, existingCode);

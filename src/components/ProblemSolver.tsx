@@ -134,7 +134,13 @@ export const ProblemSolver: React.FC = () => {
       let idealCode: string | null = null;
       
       if (useUserCode) {
-        steps = await DynamicStepGenerator.generateFromUserCode(currentProblem, userCode, testCase, newController.signal);
+        steps = await DynamicStepGenerator.generateFromUserCode(
+          currentProblem,
+          userCode,
+          testCase,
+          solutionLanguage,
+          newController.signal
+        );
       } else if (selectedApproach) {
         const result = await generateIdealVisualization(
           currentProblem,
