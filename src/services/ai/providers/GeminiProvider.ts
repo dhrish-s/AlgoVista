@@ -458,7 +458,7 @@ export class GeminiProvider implements AIProvider {
             type: Type.OBJECT,
             properties: {
               code: { type: Type.STRING },
-              language: { type: Type.STRING, enum: ['typescript'] }
+              language: { type: Type.STRING, enum: [language] }
             },
             required: ['code', 'language']
           }
