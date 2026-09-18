@@ -147,14 +147,23 @@ test('Sync My Code traces existing code without generating an Ideal Logic soluti
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   let solutionCalls = 0;
   let tracedCode = '';
+  let tracedLanguage: string | undefined;
+  let tracedLineCount: number | undefined;
   const provider = {
     id: 'openai',
     generateSolution: async () => {
       solutionCalls += 1;
       throw new Error('Ideal solution generation must not run for Sync My Code.');
     },
-    generateSteps: async (_problem: unknown, code: string) => {
+    generateSteps: async (
+      _problem: unknown,
+      code: string,
+      _testCase: unknown,
+      options?: { solutionLanguage?: string; sourceLineCount?: number }
+    ) => {
       tracedCode = code;
+      tracedLanguage = options?.solutionLanguage;
+      tracedLineCount = options?.sourceLineCount;
       return { data: steps };
     }
   } as unknown as AIProvider;
@@ -173,4 +182,6 @@ test('Sync My Code traces existing code without generating an Ideal Logic soluti
 
   assert.equal(solutionCalls, 0);
   assert.equal(tracedCode, existingCode);
+  assert.equal(tracedLanguage, 'typescript');
+  assert.equal(tracedLineCount, 3);
 });
