@@ -229,3 +229,48 @@ test('Sync My Code traces existing code without generating an Ideal Logic soluti
   assert.equal(tracedLanguage, 'typescript');
   assert.equal(tracedLineCount, 3);
 });
+
+test('Sync My Code preserves manually edited Python without solution generation', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  let solutionCalls = 0;
+  let tracedCode = '';
+  let tracedLanguage: string | undefined;
+  const provider = {
+    id: 'openai',
+    generateSolution: async () => {
+      solutionCalls += 1;
+      throw new Error('Python Sync My Code must not generate a replacement solution.');
+    },
+    generateSteps: async (
+      _problem: unknown,
+      code: string,
+      _testCase: unknown,
+      options?: { solutionLanguage?: string }
+    ) => {
+      tracedCode = code;
+      tracedLanguage = options?.solutionLanguage;
+      return { data: steps };
+    }
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai',
+    fallbackProvider: 'openai',
+    modelNames: { gemini: 'test', openai: 'test', claude: 'test' },
+    taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', provider);
+  const editedPython = 'def is_valid(s: str) -> bool:\n    stack = []\n    return not stack';
+
+  await DynamicStepGenerator.generateFromUserCode(
+    problem,
+    editedPython,
+    problem.examples[0],
+    'python'
+  );
+
+  assert.equal(solutionCalls, 0);
+  assert.equal(tracedCode, editedPython);
+  assert.equal(tracedLanguage, 'python');
+});
