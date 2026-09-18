@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { GeneratedSolution } from '../types';
 import { DEFAULT_SOLUTION_LANGUAGE, SOLUTION_LANGUAGE_METADATA } from '../solutionLanguages';
+import { buildSolutionInstructions, buildSolutionRequest } from '../solutionPrompt';
 import { StructuredProblem, ExecutionStep, ApproachOption } from '../../../types';
 import {
   assertProviderAvailable,
@@ -184,17 +185,12 @@ ${code}`
   }
 
   async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
+    const language = options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE;
     const { content, raw } = await this.requestText([
-      { role: 'system', content: SOLUTION_INSTRUCTIONS },
+      { role: 'system', content: buildSolutionInstructions(language) },
       {
         role: 'user',
-        content: `Problem: ${problem.title}
-Statement: ${problem.statement}
-Constraints: ${problem.constraints.join('\n')}
-Selected approach: ${approach.name}
-Approach details: ${approach.explanation}
-Starter signature, when available:
-${problem.starterCode || 'No starter signature was provided.'}`
+        content: buildSolutionRequest(problem, approach, language)
       }
     ], options, true);
 
