@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { validateGeneratedSolution } from '../src/services/GeneratedSolutionValidator';
+import { ENABLED_SOLUTION_LANGUAGES, SOLUTION_LANGUAGE_METADATA } from '../src/services/ai/solutionLanguages';
+
+test('enables Python with matching Monaco mode and filename extension', () => {
+  assert.equal(ENABLED_SOLUTION_LANGUAGES.includes('python'), true);
+  assert.equal(SOLUTION_LANGUAGE_METADATA.python.monacoLanguage, 'python');
+  assert.equal(SOLUTION_LANGUAGE_METADATA.python.fileExtension, 'py');
+});
 
 test('accepts a complete TypeScript solution', () => {
   const result = validateGeneratedSolution({
