@@ -24,3 +24,29 @@ test('rejects empty, fenced, placeholder, and non-TypeScript solutions', () => {
     assert.equal(validateGeneratedSolution(solution).valid, false);
   }
 });
+
+test('accepts executable code in every registered solution language', () => {
+  const solutions = [
+    ['typescript', 'function solve(): boolean {\n  return true;\n}'],
+    ['python', 'def solve():\n    return True'],
+    ['cpp', 'bool solve() {\n  return true;\n}'],
+    ['java', 'class Solution {\n  public boolean solve() { return true; }\n}'],
+    ['c', 'int solve(void) {\n  return 1;\n}'],
+    ['ruby', 'def solve\n  true\nend']
+  ] as const;
+
+  for (const [language, code] of solutions) {
+    const result = validateGeneratedSolution({ language, code }, language);
+    assert.equal(result.valid, true, `${language} should pass shared validation`);
+  }
+});
+
+test('rejects a valid solution returned in a different language than requested', () => {
+  const result = validateGeneratedSolution({
+    language: 'typescript',
+    code: 'function solve(): boolean { return true; }'
+  }, 'python');
+
+  assert.equal(result.valid, false);
+  if (!result.valid) assert.match(result.error, /must be Python/);
+});
