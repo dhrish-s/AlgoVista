@@ -121,6 +121,50 @@ test('keeps generated solutions isolated by approach and language', () => {
   assert.equal(cache.stack?.python, 'def solve():\n    return True');
 });
 
+test('reuses Python code and restores cached TypeScript for the same approach', async () => {
+  const originalGenerateSolution = DynamicStepGenerator.generateSolution;
+  const originalGenerate = DynamicStepGenerator.generate;
+  const generatedLanguages: string[] = [];
+  DynamicStepGenerator.generateSolution = async (_problem, _approach, language) => {
+    generatedLanguages.push(language);
+    return {
+      code: language === 'python'
+        ? 'def is_valid(s: str) -> bool:\n    return bool(s)'
+        : 'function isValid(s: string): boolean {\n  return Boolean(s);\n}'
+    };
+  };
+  DynamicStepGenerator.generate = async () => steps;
+
+  try {
+    useStore.setState({ idealSolutionCache: {} });
+    const typescript = await generateIdealVisualization(
+      problem, stackApproach, undefined, problem.examples[0], 'typescript'
+    );
+    useStore.getState().setIdealVisualization('stack', typescript.code, typescript.steps, 'typescript');
+    const python = await generateIdealVisualization(
+      problem, stackApproach, undefined, problem.examples[0], 'python'
+    );
+    useStore.getState().setIdealVisualization('stack', python.code, python.steps, 'python');
+
+    const cache = useStore.getState().idealSolutionCache.stack;
+    const pythonRerun = await generateIdealVisualization(
+      problem, stackApproach, cache?.python, problem.examples[0], 'python'
+    );
+    const typescriptReturn = await generateIdealVisualization(
+      problem, stackApproach, cache?.typescript, problem.examples[0], 'typescript'
+    );
+
+    assert.deepEqual(generatedLanguages, ['typescript', 'python']);
+    assert.equal(pythonRerun.reusedCode, true);
+    assert.equal(pythonRerun.code, python.code);
+    assert.equal(typescriptReturn.reusedCode, true);
+    assert.equal(typescriptReturn.code, typescript.code);
+  } finally {
+    DynamicStepGenerator.generateSolution = originalGenerateSolution;
+    DynamicStepGenerator.generate = originalGenerate;
+  }
+});
+
 test('preserves editor drafts when switching languages without generating code', () => {
   useStore.setState({
     solutionLanguage: 'typescript',
