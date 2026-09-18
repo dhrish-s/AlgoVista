@@ -111,6 +111,16 @@ test('stores Ideal Logic code, approach cache, steps, and index atomically', () 
   assert.equal(state.currentStepIndex, 0);
 });
 
+test('keeps generated solutions isolated by approach and language', () => {
+  useStore.setState({ idealSolutionCache: {} });
+  useStore.getState().setIdealVisualization('stack', 'function solve() {}', steps, 'typescript');
+  useStore.getState().setIdealVisualization('stack', 'def solve():\n    return True', steps, 'python');
+
+  const cache = useStore.getState().idealSolutionCache;
+  assert.equal(cache.stack?.typescript, 'function solve() {}');
+  assert.equal(cache.stack?.python, 'def solve():\n    return True');
+});
+
 test('Sync My Code traces existing code without generating an Ideal Logic solution', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   let solutionCalls = 0;
