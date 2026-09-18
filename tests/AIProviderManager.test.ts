@@ -272,6 +272,26 @@ test('falls back when generated solution code is malformed', async () => {
   assert.match(response.data.code, /function solve/);
 });
 
+test('passes the requested language to providers and validates the same language', async () => {
+  let receivedLanguage: string | undefined;
+  const primary = {
+    id: 'openai',
+    generateSolution: async (_problem: unknown, _approach: unknown, options?: { solutionLanguage?: string }) => {
+      receivedLanguage = options?.solutionLanguage;
+      return { data: { code: 'def solve():\n    return True', language: 'python' } };
+    }
+  } as unknown as AIProvider;
+  const manager = createManager(primary, primary);
+
+  const response = await manager.generateSolution({}, {}, {
+    task: 'steps',
+    solutionLanguage: 'python'
+  });
+
+  assert.equal(receivedLanguage, 'python');
+  assert.equal(response.data.language, 'python');
+});
+
 test('aborts timed-out solution generation and continues to fallback', async () => {
   let primarySignalWasAborted = false;
   const primary = {
