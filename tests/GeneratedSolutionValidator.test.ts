@@ -57,3 +57,18 @@ test('rejects a valid solution returned in a different language than requested',
   assert.equal(result.valid, false);
   if (!result.valid) assert.match(result.error, /must be Python/);
 });
+
+test('accepts idiomatic Python and rejects TypeScript disguised as Python', () => {
+  const python = validateGeneratedSolution({
+    language: 'python',
+    code: 'class Solution:\n    def isValid(self, s: str) -> bool:\n        return bool(s)'
+  }, 'python');
+  const disguisedTypeScript = validateGeneratedSolution({
+    language: 'python',
+    code: 'function isValid(s: string): boolean {\n  return true;\n}'
+  }, 'python');
+
+  assert.equal(python.valid, true);
+  assert.equal(disguisedTypeScript.valid, false);
+  if (!disguisedTypeScript.valid) assert.match(disguisedTypeScript.error, /executable Python/);
+});
