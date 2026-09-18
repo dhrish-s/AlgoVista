@@ -4,11 +4,17 @@ import { SOLUTION_LANGUAGE_METADATA } from './solutionLanguages';
 
 export const buildSolutionInstructions = (language: SolutionLanguage): string => {
   const label = SOLUTION_LANGUAGE_METADATA[language].label;
+  const languageGuidance = language === 'python'
+    ? `
+Use four-space indentation and conventional LeetCode-style Python signatures.
+Use a top-level def or class Solution as appropriate for the supplied signature.
+Do not compress multiple statements onto one line with semicolons.`
+    : '';
   return `Generate a complete ${label} solution for the supplied algorithm problem and selected approach.
 Return only a JSON object shaped as { "code": string, "language": "${language}" }.
 Preserve the supplied starter signature when it is compatible with ${label}.
 Do not include tests, example invocations, explanations, Markdown fences, TODOs, or placeholder code.
-Use stable formatting with one statement per line because a later execution trace will reference exact source line numbers.`;
+Use stable formatting with one statement per line because a later execution trace will reference exact source line numbers.${languageGuidance}`;
 };
 
 export const buildSolutionRequest = (
