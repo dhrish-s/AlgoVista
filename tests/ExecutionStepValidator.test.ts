@@ -82,6 +82,18 @@ test('rejects a generated trace when every line is outside the source range', ()
   assert.match(result.error || '', /No valid steps found/);
 });
 
+test('bounds Python trace lines to the installed source', () => {
+  const pythonCode = 'class Solution:\n    def solve(self):\n        value = True\n        return value';
+  const result = validateExecutionSteps([
+    { ...createStep('assign', 'assign'), line: 3 },
+    { ...createStep('outside-python', 'return'), line: 5 }
+  ], { sourceLineCount: pythonCode.split(/\r?\n/).length });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['assign']);
+  assert.match(result.warning || '', /outside the generated source range 1-4/);
+});
+
 test('normalizes array values, pointers, and highlighted indices', () => {
   const step = createStep('scan', 'move-pointer');
   const result = validateExecutionSteps([{
