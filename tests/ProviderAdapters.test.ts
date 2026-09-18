@@ -470,6 +470,38 @@ test('solution adapters request structured TypeScript tied to the selected appro
   assert.match(bodies[1].messages[0].content, /Stack-based Matching/);
 });
 
+test('OpenAI requests and returns a structured Python solution', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const originalFetch = globalThis.fetch;
+  let requestBody: Record<string, any> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({
+      choices: [{
+        message: { content: JSON.stringify({ code: 'def is_valid(s: str) -> bool:\n    return bool(s)', language: 'python' }) },
+        finish_reason: 'stop'
+      }]
+    }), { status: 200 });
+  };
+
+  try {
+    const response = await new OpenAIProvider().generateSolution(
+      { title: 'Valid Parentheses', statement: 'Validate brackets.', constraints: [] } as never,
+      { name: 'Stack', explanation: 'Use a stack.' } as never,
+      { solutionLanguage: 'python' }
+    );
+    assert.equal(response.data.language, 'python');
+    assert.match(response.data.code, /^def is_valid/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.match(requestBody?.messages[0].content, /complete Python solution/);
+  assert.match(requestBody?.messages[0].content, /four-space indentation/);
+  assert.match(requestBody?.messages[0].content, /Do not compress multiple statements/);
+  assert.match(requestBody?.messages[1].content, /Requested language: Python/);
+});
+
 test('Claude reports solution truncation before parsing incomplete code JSON', async () => {
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
   const originalFetch = globalThis.fetch;
