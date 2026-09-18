@@ -3,6 +3,7 @@ import { AIProvider, AIProviderID, AIResponse, ReasoningEvaluation, HintGenerati
 import { StructuredProblem, ExecutionStep, ApproachOption } from '../../../types';
 import { GeneratedSolution } from '../types';
 import { DEFAULT_SOLUTION_LANGUAGE, SOLUTION_LANGUAGE_METADATA } from '../solutionLanguages';
+import { buildSolutionInstructions, buildSolutionRequest } from '../solutionPrompt';
 import { getDefaultModelNames, getProviderApiKey, normalizeProblem } from '../providerConfig';
 
 export class GeminiProvider implements AIProvider {
@@ -446,18 +447,10 @@ export class GeminiProvider implements AIProvider {
 
   async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
     try {
+      const language = options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE;
       const response = await this.ai.models.generateContent({
         model: options?.model || getDefaultModelNames().gemini,
-        contents: `Generate a complete TypeScript solution for this algorithm problem.
-Problem: ${problem.title}
-Statement: ${problem.statement}
-Constraints: ${problem.constraints.join('\n')}
-Selected approach: ${approach.name}
-Approach details: ${approach.explanation}
-Starter signature, when available:
-${problem.starterCode || 'No starter signature was provided.'}
-
-Return executable TypeScript that follows the selected approach. Preserve the starter signature when one is provided. Do not include tests, example invocations, explanations, Markdown fences, TODOs, or placeholder code. Use stable formatting with one statement per line because a later execution trace will reference exact source line numbers.`,
+        contents: `${buildSolutionInstructions(language)}\n\n${buildSolutionRequest(problem, approach, language)}`,
         config: {
           abortSignal: options?.signal,
           responseMimeType: 'application/json',
