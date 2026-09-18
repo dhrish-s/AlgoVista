@@ -603,3 +603,32 @@ test('Gemini solution generation uses a strict TypeScript response schema', asyn
   assert.deepEqual(request?.config?.responseSchema?.required, ['code', 'language']);
   assert.deepEqual(request?.config?.responseSchema?.properties?.language?.enum, ['typescript']);
 });
+
+test('Gemini solution generation uses a strict Python response schema', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, any> | undefined;
+  (provider as any).ai = {
+    models: {
+      generateContent: async (value: Record<string, any>) => {
+        request = value;
+        return {
+          text: JSON.stringify({ code: 'def solve():\n    return True', language: 'python' }),
+          candidates: [{ finishReason: 'STOP' }]
+        };
+      }
+    }
+  };
+
+  const response = await provider.generateSolution(
+    { title: 'Test', statement: 'Test', constraints: [] } as never,
+    { name: 'Stack', explanation: 'Use a stack.' } as never,
+    { solutionLanguage: 'python' }
+  );
+
+  assert.equal(response.data.language, 'python');
+  assert.match(request?.contents || '', /complete Python solution/);
+  assert.match(request?.contents || '', /four-space indentation/);
+  assert.match(request?.contents || '', /Requested language: Python/);
+  assert.deepEqual(request?.config?.responseSchema?.required, ['code', 'language']);
+  assert.deepEqual(request?.config?.responseSchema?.properties?.language?.enum, ['python']);
+});
