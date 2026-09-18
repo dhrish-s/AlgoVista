@@ -121,6 +121,28 @@ test('keeps generated solutions isolated by approach and language', () => {
   assert.equal(cache.stack?.python, 'def solve():\n    return True');
 });
 
+test('preserves editor drafts when switching languages without generating code', () => {
+  useStore.setState({
+    solutionLanguage: 'typescript',
+    userCode: 'function original() {}',
+    userCodeDrafts: { typescript: 'function original() {}' },
+    currentSteps: steps,
+    currentStepIndex: 0,
+    isPlaying: true
+  });
+
+  useStore.getState().setUserCode('function edited() {}');
+  useStore.getState().setSolutionLanguage('python');
+  assert.equal(useStore.getState().userCode, '');
+  assert.equal(useStore.getState().currentSteps.length, 0);
+  assert.equal(useStore.getState().isPlaying, false);
+
+  useStore.getState().setUserCode('def solve():\n    return True');
+  useStore.getState().setSolutionLanguage('typescript');
+  assert.equal(useStore.getState().userCode, 'function edited() {}');
+  assert.equal(useStore.getState().userCodeDrafts.python, 'def solve():\n    return True');
+});
+
 test('Sync My Code traces existing code without generating an Ideal Logic solution', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   let solutionCalls = 0;
