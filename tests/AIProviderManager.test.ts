@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AIProviderManager } from '../src/services/ai/AIProviderManager';
+import { AI_OPERATION_TIMEOUT_MS, AIProviderManager } from '../src/services/ai/AIProviderManager';
 import { AIProvider, AIProviderID, AIProviderSettings } from '../src/services/ai/types';
 import { ExecutionStep } from '../src/types';
 
@@ -50,6 +50,15 @@ const createManager = (primary: AIProvider, fallback: AIProvider) => {
   providers.set('claude', fallback);
   return manager;
 };
+
+test('assigns operation-specific AI request deadlines', () => {
+  assert.deepEqual(AI_OPERATION_TIMEOUT_MS, {
+    'problem-parsing': 45_000,
+    'solution-generation': 45_000,
+    'step-generation': 180_000,
+    'small-helper': 30_000
+  });
+});
 
 test('falls back when the primary provider returns an empty trace', async () => {
   const primary = createProvider('openai', () => []);
