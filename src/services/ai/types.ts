@@ -2,6 +2,7 @@ import { StructuredProblem, ExecutionStep, ApproachOption } from '../../types';
 
 export type AIProviderID = 'gemini' | 'openai' | 'claude';
 export type SolutionLanguage = 'typescript' | 'python' | 'cpp' | 'java' | 'c' | 'ruby';
+export type AIRequestOperation = 'problem-parsing' | 'solution-generation' | 'step-generation' | 'small-helper';
 
 export interface AIProviderSettings {
   defaultProvider: AIProviderID;
@@ -69,6 +70,7 @@ export interface AIRequestOptions {
   provider?: AIProviderID;
   model?: string;
   task?: string;
+  operation?: AIRequestOperation;
   signal?: AbortSignal;
   timeoutMs?: number;
   sourceLineCount?: number;

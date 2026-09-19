@@ -59,19 +59,31 @@ export class AIProviderManager {
   }
 
   async parseProblem(input: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider, providerOptions) => provider.parseProblem(input, providerOptions), options);
+    return this.executeWithRetry(
+      (provider, providerOptions) => provider.parseProblem(input, providerOptions),
+      { ...options, operation: 'problem-parsing' }
+    );
   }
 
   async evaluateReasoning(problem: any, reasoning: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider, providerOptions) => provider.evaluateReasoning(problem, reasoning, providerOptions), options);
+    return this.executeWithRetry(
+      (provider, providerOptions) => provider.evaluateReasoning(problem, reasoning, providerOptions),
+      { ...options, operation: 'small-helper' }
+    );
   }
 
   async generateHints(problem: any, userCode: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider, providerOptions) => provider.generateHints(problem, userCode, providerOptions), options);
+    return this.executeWithRetry(
+      (provider, providerOptions) => provider.generateHints(problem, userCode, providerOptions),
+      { ...options, operation: 'small-helper' }
+    );
   }
 
   async explainCode(problem: any, code: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider, providerOptions) => provider.explainCode(problem, code, providerOptions), options);
+    return this.executeWithRetry(
+      (provider, providerOptions) => provider.explainCode(problem, code, providerOptions),
+      { ...options, operation: 'small-helper' }
+    );
   }
 
   async generateSolution(problem: any, approach: any, options?: AIRequestOptions) {
@@ -83,7 +95,7 @@ export class AIProviderManager {
         throw new Error(`Invalid generated solution: ${validation.error}`);
       }
       return { ...response, data: validation.solution };
-    }, options);
+    }, { ...options, operation: 'solution-generation' });
   }
 
   async generateSteps(problem: any, code: string, testCase: any, options?: AIRequestOptions) {
@@ -94,11 +106,14 @@ export class AIProviderManager {
         throw new Error(`Invalid step trace: ${validation.error}`);
       }
       return response;
-    }, options);
+    }, { ...options, operation: 'step-generation' });
   }
 
   async coachMessage(problem: any, userMessage: string, chatHistory: Array<{ role: 'user' | 'ai'; content: string }>, userReasoning?: string, options?: AIRequestOptions) {
-    return this.executeWithRetry((provider, providerOptions) => provider.coachMessage(problem, userMessage, chatHistory, userReasoning, providerOptions), options);
+    return this.executeWithRetry(
+      (provider, providerOptions) => provider.coachMessage(problem, userMessage, chatHistory, userReasoning, providerOptions),
+      { ...options, operation: 'small-helper' }
+    );
   }
 
   private async executeWithRetry<T>(
