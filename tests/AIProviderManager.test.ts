@@ -60,6 +60,42 @@ test('assigns operation-specific AI request deadlines', () => {
   });
 });
 
+test('passes the actual operation identity to each provider request', async () => {
+  const operations: Array<string | undefined> = [];
+  const provider = {
+    id: 'openai',
+    parseProblem: async (_input: string, options?: { operation?: string }) => {
+      operations.push(options?.operation);
+      return { data: {} };
+    },
+    generateSolution: async (_problem: unknown, _approach: unknown, options?: { operation?: string }) => {
+      operations.push(options?.operation);
+      return { data: { code: 'function solve(): boolean { return true; }', language: 'typescript' } };
+    },
+    generateSteps: async (_problem: unknown, _code: string, _case: unknown, options?: { operation?: string }) => {
+      operations.push(options?.operation);
+      return { data: validTrace };
+    },
+    evaluateReasoning: async (_problem: unknown, _reasoning: string, options?: { operation?: string }) => {
+      operations.push(options?.operation);
+      return { data: { isValid: true, score: 1, feedback: 'Good.' } };
+    }
+  } as unknown as AIProvider;
+  const manager = createManager(provider, provider);
+
+  await manager.parseProblem('test');
+  await manager.generateSolution({}, {});
+  await manager.generateSteps({}, '', {});
+  await manager.evaluateReasoning({}, 'reasoning');
+
+  assert.deepEqual(operations, [
+    'problem-parsing',
+    'solution-generation',
+    'step-generation',
+    'small-helper'
+  ]);
+});
+
 test('falls back when the primary provider returns an empty trace', async () => {
   const primary = createProvider('openai', () => []);
   const fallback = createProvider('claude', () => validTrace);
