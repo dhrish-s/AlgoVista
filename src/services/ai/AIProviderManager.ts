@@ -1,4 +1,4 @@
-import { AIProvider, AIProviderID, AIRequestOptions, AIProviderSettings, AIResponse } from './types';
+import { AIProvider, AIProviderID, AIRequestOperation, AIRequestOptions, AIProviderSettings, AIResponse } from './types';
 import { GeminiProvider } from './providers/GeminiProvider';
 import { OpenAIProvider, ClaudeProvider } from './providers/AlternativeProviders';
 import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider, getProviderAvailability } from './providerConfig';
@@ -6,8 +6,14 @@ import { validateExecutionSteps } from '../ExecutionStepValidator';
 import { validateGeneratedSolution } from '../GeneratedSolutionValidator';
 import { DEFAULT_SOLUTION_LANGUAGE } from './solutionLanguages';
 
+export const AI_OPERATION_TIMEOUT_MS: Record<AIRequestOperation, number> = {
+  'problem-parsing': 45_000,
+  'solution-generation': 45_000,
+  'step-generation': 180_000,
+  'small-helper': 30_000
+};
+
 export class AIProviderManager {
-  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
   private providers: Map<AIProviderID, AIProvider> = new Map();
   private providerFactories: Record<AIProviderID, () => AIProvider>;
   private settings: AIProviderSettings;
@@ -149,7 +155,10 @@ export class AIProviderManager {
             task,
             provider,
             providerOptions,
-            Math.max(1, options?.timeoutMs ?? AIProviderManager.DEFAULT_REQUEST_TIMEOUT_MS)
+            Math.max(
+              1,
+              options?.timeoutMs ?? AI_OPERATION_TIMEOUT_MS[options?.operation || 'small-helper']
+            )
           );
           return {
             ...response,
