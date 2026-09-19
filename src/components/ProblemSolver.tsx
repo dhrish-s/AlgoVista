@@ -34,6 +34,8 @@ const getSafeApproaches = (approaches?: ApproachOption[]): ApproachOption[] => {
     }));
 };
 
+const LONG_TRACE_WAIT_MS = 20_000;
+
 export const ProblemSolver: React.FC = () => {
   const { 
     currentProblem, 
@@ -72,6 +74,7 @@ export const ProblemSolver: React.FC = () => {
   const [selectedApproach, setSelectedApproach] = useState<ApproachOption | null>(null);
   const [lastVisualizationMode, setLastVisualizationMode] = useState<'ideal' | 'user' | null>(null);
   const [generationPhase, setGenerationPhase] = useState<'idle' | 'solution' | 'trace'>('idle');
+  const [isLongTraceWait, setIsLongTraceWait] = useState(false);
   const generationControllerRef = useRef<AbortController | null>(null);
 
   // Auto-select first approach when problem loads
@@ -92,6 +95,17 @@ export const ProblemSolver: React.FC = () => {
       setStepGenerationState(false, null, false);
     };
   }, [currentProblem?.id, setStepGenerationState]);
+
+  useEffect(() => {
+    if (!isGeneratingSteps || generationPhase !== 'trace') {
+      setIsLongTraceWait(false);
+      return;
+    }
+
+    setIsLongTraceWait(false);
+    const timeoutId = window.setTimeout(() => setIsLongTraceWait(true), LONG_TRACE_WAIT_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [generationPhase, isGeneratingSteps]);
 
   // Playback logic
   useEffect(() => {
@@ -386,7 +400,7 @@ export const ProblemSolver: React.FC = () => {
                       >
                         {isGeneratingSteps ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-white" />}
                         {isGeneratingSteps
-                          ? generationPhase === 'solution' ? 'Generating solution' : 'Generating trace'
+                          ? generationPhase === 'solution' ? 'Generating solution' : isLongTraceWait ? 'Trace still running' : 'Generating trace'
                           : 'Ideal Logic'}
                       </button>
                       <button
@@ -396,7 +410,7 @@ export const ProblemSolver: React.FC = () => {
                       >
                         {isGeneratingSteps ? <Loader2 className="w-3 h-3 animate-spin" /> : <Code className="w-3 h-3" />}
                         {isGeneratingSteps
-                          ? generationPhase === 'solution' ? 'Generating solution' : 'Generating trace'
+                          ? generationPhase === 'solution' ? 'Generating solution' : isLongTraceWait ? 'Trace still running' : 'Generating trace'
                           : 'Sync My Code'}
                       </button>
                     </div>
@@ -408,9 +422,20 @@ export const ProblemSolver: React.FC = () => {
 
                    {isGeneratingSteps && (
                      <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm">
-                       <div className="flex items-center gap-3 rounded-xl border border-indigo-500/20 bg-slate-900 px-5 py-3 text-xs font-bold text-indigo-200 shadow-2xl">
+                       <div className="flex items-center gap-3 rounded-xl border border-indigo-500/20 bg-slate-900 px-5 py-3 text-indigo-200 shadow-2xl">
                          <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
-                         {generationPhase === 'solution' ? 'Generating solution' : 'Generating trace'}
+                         <div className="flex flex-col gap-1">
+                           <span className="text-xs font-bold">
+                             {generationPhase === 'solution'
+                               ? 'Generating solution'
+                               : isLongTraceWait ? 'Still generating trace' : 'Generating trace'}
+                           </span>
+                           {generationPhase === 'trace' && isLongTraceWait && (
+                             <span className="max-w-xs text-[10px] font-medium leading-relaxed text-slate-400">
+                               Larger problems can take a couple of minutes. The request is still in progress.
+                             </span>
+                           )}
+                         </div>
                        </div>
                      </div>
                    )}
