@@ -13,6 +13,10 @@ export const AI_OPERATION_TIMEOUT_MS: Record<AIRequestOperation, number> = {
   'small-helper': 30_000
 };
 
+// Future improvement: AIRequestOptions.onStream is currently unused. Real provider streaming
+// would allow an inactivity timeout between tokens instead of one wall-clock deadline for the
+// entire response. Keep these hard deadlines until every provider supports that consistently.
+
 export class AIProviderManager {
   private providers: Map<AIProviderID, AIProvider> = new Map();
   private providerFactories: Record<AIProviderID, () => AIProvider>;
