@@ -9,7 +9,13 @@ export const buildSolutionInstructions = (language: SolutionLanguage): string =>
 Use four-space indentation and conventional LeetCode-style Python signatures.
 Use a top-level def or class Solution as appropriate for the supplied signature.
 Do not compress multiple statements onto one line with semicolons.`
-    : '';
+    : language === 'cpp'
+      ? `
+Use C++17 conventions and the standard library where appropriate.
+Use a conventional class Solution with the expected public method signature.
+Do not include an unnecessary main function.
+Keep declarations and statements on stable separate lines for line-by-line tracing.`
+      : '';
   return `Generate a complete ${label} solution for the supplied algorithm problem and selected approach.
 Return only a JSON object shaped as { "code": string, "language": "${language}" }.
 Preserve the supplied starter signature when it is compatible with ${label}.
