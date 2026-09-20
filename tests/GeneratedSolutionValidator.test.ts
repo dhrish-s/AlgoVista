@@ -82,7 +82,7 @@ test('accepts idiomatic Python and rejects TypeScript disguised as Python', () =
 test('accepts idiomatic C++ and rejects TypeScript disguised as C++', () => {
   const cpp = validateGeneratedSolution({
     language: 'cpp',
-    code: 'class Solution {\npublic:\n  bool isValid(string s) {\n    return !s.empty();\n  }\n};'
+    code: 'class Solution {\npublic:\n  bool isValid(const std::string& s) {\n    for (char c : s) {\n      if (c == \'(\') return true;\n    }\n    return false;\n  }\n};'
   }, 'cpp');
   const disguisedTypeScript = validateGeneratedSolution({
     language: 'cpp',
