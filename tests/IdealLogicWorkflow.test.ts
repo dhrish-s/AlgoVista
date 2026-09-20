@@ -165,6 +165,27 @@ test('reuses Python code and restores cached TypeScript for the same approach', 
   }
 });
 
+test('keeps TypeScript, Python, and C++ cached separately for one approach', () => {
+  const typescript = 'function solve(): boolean { return true; }';
+  const python = 'def solve():\n    return True';
+  const cpp = 'class Solution { public: bool solve() { return true; } };';
+  useStore.setState({ idealSolutionCache: {}, userCodeDrafts: {}, userCode: '' });
+  useStore.getState().setIdealVisualization('stack', typescript, steps, 'typescript');
+  useStore.getState().setIdealVisualization('stack', python, steps, 'python');
+  useStore.getState().setIdealVisualization('stack', cpp, steps, 'cpp');
+
+  const cache = useStore.getState().idealSolutionCache.stack;
+  assert.equal(cache?.typescript, typescript);
+  assert.equal(cache?.python, python);
+  assert.equal(cache?.cpp, cpp);
+  useStore.getState().setSolutionLanguage('typescript');
+  assert.equal(useStore.getState().userCode, typescript);
+  useStore.getState().setSolutionLanguage('python');
+  assert.equal(useStore.getState().userCode, python);
+  useStore.getState().setSolutionLanguage('cpp');
+  assert.equal(useStore.getState().userCode, cpp);
+});
+
 test('preserves editor drafts when switching languages without generating code', () => {
   useStore.setState({
     solutionLanguage: 'typescript',
