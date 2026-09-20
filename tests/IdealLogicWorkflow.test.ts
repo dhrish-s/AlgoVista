@@ -295,3 +295,34 @@ test('Sync My Code preserves manually edited Python without solution generation'
   assert.equal(tracedCode, editedPython);
   assert.equal(tracedLanguage, 'python');
 });
+
+test('Sync My Code preserves manually edited C++ without solution generation', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  let solutionCalls = 0;
+  let tracedCode = '';
+  let tracedLanguage: string | undefined;
+  const provider = {
+    id: 'openai',
+    generateSolution: async () => {
+      solutionCalls += 1;
+      throw new Error('C++ Sync must not generate replacement code.');
+    },
+    generateSteps: async (_problem: unknown, code: string, _case: unknown, options?: { solutionLanguage?: string }) => {
+      tracedCode = code;
+      tracedLanguage = options?.solutionLanguage;
+      return { data: steps };
+    }
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test', openai: 'test', claude: 'test' }, taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', provider);
+  const editedCpp = 'class Solution {\npublic:\n  bool isValid(string s) { return !s.empty(); }\n};';
+  await DynamicStepGenerator.generateFromUserCode(problem, editedCpp, problem.examples[0], 'cpp');
+  assert.equal(solutionCalls, 0);
+  assert.equal(tracedCode, editedCpp);
+  assert.equal(tracedLanguage, 'cpp');
+});
