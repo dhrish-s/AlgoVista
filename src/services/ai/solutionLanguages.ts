@@ -19,4 +19,4 @@ export const SOLUTION_LANGUAGE_METADATA: Record<SolutionLanguage, SolutionLangua
 
 export const SOLUTION_LANGUAGES = Object.keys(SOLUTION_LANGUAGE_METADATA) as SolutionLanguage[];
 
-export const ENABLED_SOLUTION_LANGUAGES: SolutionLanguage[] = [DEFAULT_SOLUTION_LANGUAGE, 'python'];
+export const ENABLED_SOLUTION_LANGUAGES: SolutionLanguage[] = [DEFAULT_SOLUTION_LANGUAGE, 'python', 'cpp'];
