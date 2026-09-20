@@ -94,6 +94,17 @@ test('bounds Python trace lines to the installed source', () => {
   assert.match(result.warning || '', /outside the generated source range 1-4/);
 });
 
+test('bounds C++ trace lines to the installed source', () => {
+  const cppCode = 'class Solution {\npublic:\n  bool solve() { return true; }\n};';
+  const result = validateExecutionSteps([
+    { ...createStep('return', 'return'), line: 3 },
+    { ...createStep('outside-cpp', 'return'), line: 5 }
+  ], { sourceLineCount: cppCode.split(/\r?\n/).length });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['return']);
+  assert.match(result.warning || '', /outside the generated source range 1-4/);
+});
+
 test('normalizes array values, pointers, and highlighted indices', () => {
   const step = createStep('scan', 'move-pointer');
   const result = validateExecutionSteps([{
