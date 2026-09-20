@@ -78,3 +78,18 @@ test('accepts idiomatic Python and rejects TypeScript disguised as Python', () =
   assert.equal(disguisedTypeScript.valid, false);
   if (!disguisedTypeScript.valid) assert.match(disguisedTypeScript.error, /executable Python/);
 });
+
+test('accepts idiomatic C++ and rejects TypeScript disguised as C++', () => {
+  const cpp = validateGeneratedSolution({
+    language: 'cpp',
+    code: 'class Solution {\npublic:\n  bool isValid(string s) {\n    return !s.empty();\n  }\n};'
+  }, 'cpp');
+  const disguisedTypeScript = validateGeneratedSolution({
+    language: 'cpp',
+    code: 'class Solution {\n  isValid(s: string): boolean {\n    return true;\n  }\n}'
+  }, 'cpp');
+
+  assert.equal(cpp.valid, true);
+  assert.equal(disguisedTypeScript.valid, false);
+  if (!disguisedTypeScript.valid) assert.match(disguisedTypeScript.error, /incompatible with C\+\+/);
+});
