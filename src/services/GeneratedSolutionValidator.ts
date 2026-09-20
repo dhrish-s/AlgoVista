@@ -12,6 +12,9 @@ const EXECUTABLE_CODE_PATTERNS: Record<SolutionLanguage, RegExp> = {
   c: /\b(?:void|char|short|int|long|float|double|bool|size_t)\s+\**\s*\w+\s*\(/,
   ruby: /^\s*(?:def|class|module)\s+\w+/m
 };
+const INVALID_LANGUAGE_PATTERNS: Partial<Record<SolutionLanguage, RegExp>> = {
+  cpp: /\bfunction\b|:\s*(?:string|boolean|number)\b|=>|^\s*def\s+\w+/m
+};
 
 export type GeneratedSolutionValidation =
   | { valid: true; solution: GeneratedSolution }
@@ -59,6 +62,12 @@ export const validateGeneratedSolution = (
     return {
       valid: false,
       error: `Generated solution does not appear to contain executable ${SOLUTION_LANGUAGE_METADATA[expectedLanguage].label} code.`
+    };
+  }
+  if (INVALID_LANGUAGE_PATTERNS[expectedLanguage]?.test(code)) {
+    return {
+      valid: false,
+      error: `Generated solution contains syntax that is incompatible with ${SOLUTION_LANGUAGE_METADATA[expectedLanguage].label}.`
     };
   }
 
