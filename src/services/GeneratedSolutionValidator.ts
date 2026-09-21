@@ -13,7 +13,8 @@ const EXECUTABLE_CODE_PATTERNS: Record<SolutionLanguage, RegExp> = {
   ruby: /^\s*(?:def|class|module)\s+\w+/m
 };
 const INVALID_LANGUAGE_PATTERNS: Partial<Record<SolutionLanguage, RegExp>> = {
-  cpp: /\bfunction\b|(?<!:):\s*(?:string|boolean|number)\b|=>|^\s*def\s+\w+/m
+  cpp: /\bfunction\b|(?<!:):\s*(?:string|boolean|number)\b|=>|^\s*def\s+\w+/m,
+  java: /\bfunction\b|(?<!:):\s*(?:string|boolean|number)\b|=>|^\s*def\s+\w+/m
 };
 
 export type GeneratedSolutionValidation =
