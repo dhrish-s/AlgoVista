@@ -99,3 +99,18 @@ test('accepts idiomatic C++ and rejects TypeScript disguised as C++', () => {
   assert.equal(disguisedTypeScript.valid, false);
   if (!disguisedTypeScript.valid) assert.match(disguisedTypeScript.error, /incompatible with C\+\+/);
 });
+
+test('accepts idiomatic Java syntax and rejects TypeScript disguised as Java', () => {
+  const java = validateGeneratedSolution({
+    language: 'java',
+    code: 'class Solution implements Validator {\n  private final Map<String, Integer> counts = new HashMap<>();\n\n  @Override\n  public boolean isValid(List<Integer> values) {\n    for (Integer value : values) {\n      counts.put(value.toString(), value);\n    }\n    return !counts.isEmpty();\n  }\n}'
+  }, 'java');
+  const disguisedTypeScript = validateGeneratedSolution({
+    language: 'java',
+    code: 'class Solution {\n  isValid(s: string): boolean {\n    return true;\n  }\n}'
+  }, 'java');
+
+  assert.equal(java.valid, true);
+  assert.equal(disguisedTypeScript.valid, false);
+  if (!disguisedTypeScript.valid) assert.match(disguisedTypeScript.error, /incompatible with Java/);
+});
