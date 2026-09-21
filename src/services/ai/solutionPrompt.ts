@@ -15,6 +15,11 @@ Use C++17 conventions and the standard library where appropriate.
 Use a conventional class Solution with the expected public method signature.
 Do not include an unnecessary main function.
 Keep declarations and statements on stable separate lines for line-by-line tracing.`
+      : language === 'java'
+        ? `
+Use a conventional class Solution with the expected method signature and explicit Java types.
+Do not include an unnecessary runner or public static void main method.
+Keep declarations and statements on stable separate lines for line-by-line tracing.`
       : '';
   return `Generate a complete ${label} solution for the supplied algorithm problem and selected approach.
 Return only a JSON object shaped as { "code": string, "language": "${language}" }.
