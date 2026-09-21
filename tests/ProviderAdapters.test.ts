@@ -528,6 +528,32 @@ test('OpenAI requests and returns a structured C++ solution', async () => {
   assert.match(requestBody?.messages[1].content, /Requested language: C\+\+/);
 });
 
+test('OpenAI requests and returns a structured Java solution', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const originalFetch = globalThis.fetch;
+  let requestBody: Record<string, any> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+      code: 'class Solution {\n  public boolean isValid(String s) { return true; }\n}', language: 'java'
+    }) }, finish_reason: 'stop' }] }), { status: 200 });
+  };
+  try {
+    const response = await new OpenAIProvider().generateSolution(
+      { title: 'Valid Parentheses', statement: 'Validate brackets.', constraints: [] } as never,
+      { name: 'Stack', explanation: 'Use a stack.' } as never,
+      { solutionLanguage: 'java' }
+    );
+    assert.equal(response.data.language, 'java');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.match(requestBody?.messages[0].content, /complete Java solution/);
+  assert.match(requestBody?.messages[0].content, /explicit Java types/);
+  assert.match(requestBody?.messages[0].content, /Do not include an unnecessary runner/);
+  assert.match(requestBody?.messages[1].content, /Requested language: Java/);
+});
+
 test('Claude requests and returns a structured Python solution', async () => {
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
   const originalFetch = globalThis.fetch;
