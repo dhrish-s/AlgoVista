@@ -105,6 +105,17 @@ test('bounds C++ trace lines to the installed source', () => {
   assert.match(result.warning || '', /outside the generated source range 1-4/);
 });
 
+test('bounds Java trace lines to the installed source', () => {
+  const javaCode = 'class Solution {\n  public boolean solve() {\n    return true;\n  }\n}';
+  const result = validateExecutionSteps([
+    { ...createStep('return', 'return'), line: 3 },
+    { ...createStep('outside-java', 'return'), line: 6 }
+  ], { sourceLineCount: javaCode.split(/\r?\n/).length });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['return']);
+  assert.match(result.warning || '', /outside the generated source range 1-5/);
+});
+
 test('normalizes array values, pointers, and highlighted indices', () => {
   const step = createStep('scan', 'move-pointer');
   const result = validateExecutionSteps([{
