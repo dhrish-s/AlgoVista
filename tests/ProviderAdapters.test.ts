@@ -757,3 +757,24 @@ test('Gemini solution generation uses a strict C++ response schema', async () =>
   assert.match(request?.contents || '', /Requested language: C\+\+/);
   assert.deepEqual(request?.config?.responseSchema?.properties?.language?.enum, ['cpp']);
 });
+
+test('Gemini solution generation uses a strict Java response schema', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, any> | undefined;
+  (provider as any).ai = { models: { generateContent: async (value: Record<string, any>) => {
+    request = value;
+    return {
+      text: JSON.stringify({ code: 'class Solution { public boolean solve() { return true; } }', language: 'java' }),
+      candidates: [{ finishReason: 'STOP' }]
+    };
+  } } };
+  const response = await provider.generateSolution(
+    { title: 'Test', statement: 'Test', constraints: [] } as never,
+    { name: 'Stack', explanation: 'Use a stack.' } as never,
+    { solutionLanguage: 'java' }
+  );
+  assert.equal(response.data.language, 'java');
+  assert.match(request?.contents || '', /explicit Java types/);
+  assert.match(request?.contents || '', /Requested language: Java/);
+  assert.deepEqual(request?.config?.responseSchema?.properties?.language?.enum, ['java']);
+});
