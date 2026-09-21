@@ -613,6 +613,32 @@ test('Claude requests and returns a structured C++ solution', async () => {
   assert.match(requestBody?.messages[0].content, /Requested language: C\+\+/);
 });
 
+test('Claude requests and returns a structured Java solution', async () => {
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const originalFetch = globalThis.fetch;
+  let requestBody: Record<string, any> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({
+      code: 'class Solution {\n  public boolean isValid(String s) { return true; }\n}', language: 'java'
+    }) }], stop_reason: 'end_turn' }), { status: 200 });
+  };
+  try {
+    const response = await new ClaudeProvider().generateSolution(
+      { title: 'Valid Parentheses', statement: 'Validate brackets.', constraints: [] } as never,
+      { name: 'Stack', explanation: 'Use a stack.' } as never,
+      { solutionLanguage: 'java' }
+    );
+    assert.equal(response.data.language, 'java');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.match(requestBody?.system, /complete Java solution/);
+  assert.match(requestBody?.system, /explicit Java types/);
+  assert.match(requestBody?.system, /Do not include an unnecessary runner/);
+  assert.match(requestBody?.messages[0].content, /Requested language: Java/);
+});
+
 test('Claude reports solution truncation before parsing incomplete code JSON', async () => {
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
   const originalFetch = globalThis.fetch;
