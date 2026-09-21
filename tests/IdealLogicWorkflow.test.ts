@@ -165,6 +165,38 @@ test('reuses Python code and restores cached TypeScript for the same approach', 
   }
 });
 
+test('forwards Java as the source language for an Ideal Logic trace', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  let tracedLanguage: string | undefined;
+  const provider = {
+    id: 'openai',
+    generateSteps: async (
+      _problem: unknown,
+      _code: string,
+      _testCase: unknown,
+      options?: { solutionLanguage?: string }
+    ) => {
+      tracedLanguage = options?.solutionLanguage;
+      return { data: steps };
+    }
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test', openai: 'test', claude: 'test' }, taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', provider);
+  const cachedJava = 'class Solution {\n  public boolean isValid(String s) { return true; }\n}';
+
+  const result = await generateIdealVisualization(
+    problem, stackApproach, cachedJava, problem.examples[0], 'java'
+  );
+
+  assert.equal(result.reusedCode, true);
+  assert.equal(tracedLanguage, 'java');
+});
+
 test('keeps TypeScript, Python, C++, and Java cached separately for one approach', () => {
   const typescript = 'function solve(): boolean { return true; }';
   const python = 'def solve():\n    return True';
