@@ -22,6 +22,6 @@ export const generateIdealVisualization = async (
   if (!cachedCode) onPhaseChange?.('solution');
   const code = cachedCode || (await DynamicStepGenerator.generateSolution(problem, approach, language, signal)).code;
   onPhaseChange?.('trace');
-  const steps = await DynamicStepGenerator.generate(problem, approach, code, testCase, signal);
+  const steps = await DynamicStepGenerator.generate(problem, approach, code, testCase, language, signal);
   return { code, steps, reusedCode: Boolean(cachedCode) };
 };

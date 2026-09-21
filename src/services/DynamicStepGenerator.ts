@@ -57,6 +57,7 @@ export class DynamicStepGenerator {
     approach: ApproachOption,
     solutionCode: string,
     testCase: { input: string; output: string },
+    language: SolutionLanguage = DEFAULT_SOLUTION_LANGUAGE,
     signal?: AbortSignal
   ): Promise<ExecutionStep[]> {
     const aiManager = getAIManager();
@@ -76,7 +77,8 @@ export class DynamicStepGenerator {
     const { data: rawSteps, meta } = await aiManager.generateSteps(problem, solutionCode, testCase, {
       task: 'steps',
       signal,
-      sourceLineCount
+      sourceLineCount,
+      solutionLanguage: language
     });
 
     // Ignore if a newer request started
