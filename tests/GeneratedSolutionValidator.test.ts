@@ -138,3 +138,13 @@ test('accepts a pointer-backed C stack with explicit node cleanup', () => {
 
   assert.equal(result.valid, true);
 });
+
+test('rejects C++ collection syntax disguised as C', () => {
+  const result = validateGeneratedSolution({
+    language: 'c',
+    code: 'bool isValid(char *s) {\n  std::stack<char> values;\n  return values.empty();\n}'
+  }, 'c');
+
+  assert.equal(result.valid, false);
+  if (!result.valid) assert.match(result.error, /incompatible with C/);
+});
