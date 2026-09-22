@@ -554,6 +554,33 @@ test('OpenAI requests and returns a structured Java solution', async () => {
   assert.match(requestBody?.messages[1].content, /Requested language: Java/);
 });
 
+test('OpenAI requests and returns a structured C solution', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const originalFetch = globalThis.fetch;
+  let requestBody: Record<string, any> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+      code: 'bool isValid(char *s) {\n  return s[0] != 0;\n}', language: 'c'
+    }) }, finish_reason: 'stop' }] }), { status: 200 });
+  };
+  try {
+    const response = await new OpenAIProvider().generateSolution(
+      { title: 'Valid Parentheses', statement: 'Validate brackets.', constraints: [] } as never,
+      { name: 'Stack', explanation: 'Use a stack.' } as never,
+      { solutionLanguage: 'c' }
+    );
+    assert.equal(response.data.language, 'c');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.match(requestBody?.messages[0].content, /complete C solution/);
+  assert.match(requestBody?.messages[0].content, /C11-style functions/);
+  assert.match(requestBody?.messages[0].content, /memory handling explicitly/);
+  assert.match(requestBody?.messages[0].content, /Do not use C\+\+ constructs/);
+  assert.match(requestBody?.messages[1].content, /Requested language: C/);
+});
+
 test('Claude requests and returns a structured Python solution', async () => {
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
   const originalFetch = globalThis.fetch;
