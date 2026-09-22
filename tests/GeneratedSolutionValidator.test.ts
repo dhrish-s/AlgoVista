@@ -129,3 +129,12 @@ test('accepts an array-backed C stack with explicit memory handling', () => {
 
   assert.equal(result.valid, true);
 });
+
+test('accepts a pointer-backed C stack with explicit node cleanup', () => {
+  const result = validateGeneratedSolution({
+    language: 'c',
+    code: '#include <stdbool.h>\n#include <stdlib.h>\n\ntypedef struct StackNode {\n  char value;\n  struct StackNode *next;\n} StackNode;\n\nstatic void push(StackNode **top, char value) {\n  StackNode *node = malloc(sizeof(*node));\n  node->value = value;\n  node->next = *top;\n  *top = node;\n}\n\nbool isValid(char *s) {\n  StackNode *top = NULL;\n  push(&top, s[0]);\n  free(top);\n  return true;\n}'
+  }, 'c');
+
+  assert.equal(result.valid, true);
+});
