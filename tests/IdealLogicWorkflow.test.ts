@@ -6,6 +6,7 @@ import { ApproachOption, ExecutionStep, StructuredProblem } from '../src/types';
 import { useStore } from '../src/store/useStore';
 import { getAIManager } from '../src/services/ai/AIProviderManager';
 import { AIProvider } from '../src/services/ai/types';
+import { SOLUTION_LANGUAGES } from '../src/services/ai/solutionLanguages';
 
 const problem = {
   id: 'valid-parentheses',
@@ -165,9 +166,9 @@ test('reuses Python code and restores cached TypeScript for the same approach', 
   }
 });
 
-test('forwards Java as the source language for an Ideal Logic trace', async () => {
+test('forwards every registered source language through Ideal Logic traces', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
-  let tracedLanguage: string | undefined;
+  const tracedLanguages: Array<string | undefined> = [];
   const provider = {
     id: 'openai',
     generateSteps: async (
@@ -176,7 +177,7 @@ test('forwards Java as the source language for an Ideal Logic trace', async () =
       _testCase: unknown,
       options?: { solutionLanguage?: string }
     ) => {
-      tracedLanguage = options?.solutionLanguage;
+      tracedLanguages.push(options?.solutionLanguage);
       return { data: steps };
     }
   } as unknown as AIProvider;
@@ -187,14 +188,14 @@ test('forwards Java as the source language for an Ideal Logic trace', async () =
   const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
   providers.clear();
   providers.set('openai', provider);
-  const cachedJava = 'class Solution {\n  public boolean isValid(String s) { return true; }\n}';
+  for (const language of SOLUTION_LANGUAGES) {
+    const result = await generateIdealVisualization(
+      problem, stackApproach, 'first line\nsecond line', problem.examples[0], language
+    );
+    assert.equal(result.reusedCode, true);
+  }
 
-  const result = await generateIdealVisualization(
-    problem, stackApproach, cachedJava, problem.examples[0], 'java'
-  );
-
-  assert.equal(result.reusedCode, true);
-  assert.equal(tracedLanguage, 'java');
+  assert.deepEqual(tracedLanguages, SOLUTION_LANGUAGES);
 });
 
 test('keeps TypeScript, Python, C++, and Java cached separately for one approach', () => {
