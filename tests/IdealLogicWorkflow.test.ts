@@ -198,22 +198,25 @@ test('forwards every registered source language through Ideal Logic traces', asy
   assert.deepEqual(tracedLanguages, SOLUTION_LANGUAGES);
 });
 
-test('keeps TypeScript, Python, C++, and Java cached separately for one approach', () => {
+test('keeps TypeScript, Python, C++, Java, and C cached separately for one approach', () => {
   const typescript = 'function solve(): boolean { return true; }';
   const python = 'def solve():\n    return True';
   const cpp = 'class Solution { public: bool solve() { return true; } };';
   const java = 'class Solution { public boolean solve() { return true; } }';
+  const c = 'bool solve(void) { return true; }';
   useStore.setState({ idealSolutionCache: {}, userCodeDrafts: {}, userCode: '' });
   useStore.getState().setIdealVisualization('stack', typescript, steps, 'typescript');
   useStore.getState().setIdealVisualization('stack', python, steps, 'python');
   useStore.getState().setIdealVisualization('stack', cpp, steps, 'cpp');
   useStore.getState().setIdealVisualization('stack', java, steps, 'java');
+  useStore.getState().setIdealVisualization('stack', c, steps, 'c');
 
   const cache = useStore.getState().idealSolutionCache.stack;
   assert.equal(cache?.typescript, typescript);
   assert.equal(cache?.python, python);
   assert.equal(cache?.cpp, cpp);
   assert.equal(cache?.java, java);
+  assert.equal(cache?.c, c);
   useStore.getState().setSolutionLanguage('typescript');
   assert.equal(useStore.getState().userCode, typescript);
   useStore.getState().setSolutionLanguage('python');
@@ -222,6 +225,8 @@ test('keeps TypeScript, Python, C++, and Java cached separately for one approach
   assert.equal(useStore.getState().userCode, cpp);
   useStore.getState().setSolutionLanguage('java');
   assert.equal(useStore.getState().userCode, java);
+  useStore.getState().setSolutionLanguage('c');
+  assert.equal(useStore.getState().userCode, c);
 });
 
 test('preserves editor drafts when switching languages without generating code', () => {
