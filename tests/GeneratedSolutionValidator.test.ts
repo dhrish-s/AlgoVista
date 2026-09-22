@@ -21,6 +21,12 @@ test('enables Java with matching Monaco mode and filename extension', () => {
   assert.equal(SOLUTION_LANGUAGE_METADATA.java.fileExtension, 'java');
 });
 
+test('enables C with matching Monaco mode and filename extension', () => {
+  assert.equal(ENABLED_SOLUTION_LANGUAGES.includes('c'), true);
+  assert.equal(SOLUTION_LANGUAGE_METADATA.c.monacoLanguage, 'c');
+  assert.equal(SOLUTION_LANGUAGE_METADATA.c.fileExtension, 'c');
+});
+
 test('accepts a complete TypeScript solution', () => {
   const result = validateGeneratedSolution({
     language: 'typescript',
