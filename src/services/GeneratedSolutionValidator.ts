@@ -14,7 +14,8 @@ const EXECUTABLE_CODE_PATTERNS: Record<SolutionLanguage, RegExp> = {
 };
 const INVALID_LANGUAGE_PATTERNS: Partial<Record<SolutionLanguage, RegExp>> = {
   cpp: /\bfunction\b|(?<!:):\s*(?:string|boolean|number)\b|=>|^\s*def\s+\w+/m,
-  java: /\bfunction\b|(?<!:):\s*(?:string|boolean|number)\b|=>|^\s*def\s+\w+/m
+  java: /\bfunction\b|(?<!:):\s*(?:string|boolean|number)\b|=>|^\s*def\s+\w+/m,
+  c: /\b(?:class|namespace|function)\b|\bstd::|\btemplate\s*<|\b(?:vector|stack|map|unordered_map|string)\s*<|(?<!:):\s*(?:string|boolean|number)\b|=>|^\s*def\s+\w+/m
 };
 
 export type GeneratedSolutionValidation =
