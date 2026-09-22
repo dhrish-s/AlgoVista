@@ -20,6 +20,13 @@ Keep declarations and statements on stable separate lines for line-by-line traci
 Use a conventional class Solution with the expected method signature and explicit Java types.
 Do not include an unnecessary runner or public static void main method.
 Keep declarations and statements on stable separate lines for line-by-line tracing.`
+        : language === 'c'
+          ? `
+Use C11-style functions with the expected explicit parameter and return types.
+Represent data structures and memory handling explicitly, including allocation bounds and cleanup when dynamic memory is used.
+Do not use C++ constructs such as classes, namespaces, templates, references, or STL containers.
+Do not include an unnecessary main function.
+Keep declarations and statements on stable separate lines for line-by-line tracing.`
       : '';
   return `Generate a complete ${label} solution for the supplied algorithm problem and selected approach.
 Return only a JSON object shaped as { "code": string, "language": "${language}" }.
