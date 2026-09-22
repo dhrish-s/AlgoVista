@@ -120,3 +120,12 @@ test('accepts idiomatic Java syntax and rejects TypeScript disguised as Java', (
   assert.equal(disguisedTypeScript.valid, false);
   if (!disguisedTypeScript.valid) assert.match(disguisedTypeScript.error, /incompatible with Java/);
 });
+
+test('accepts an array-backed C stack with explicit memory handling', () => {
+  const result = validateGeneratedSolution({
+    language: 'c',
+    code: '#include <stdbool.h>\n#include <stdlib.h>\n#include <string.h>\n\nbool isValid(char *s) {\n  size_t length = strlen(s);\n  char *stack = malloc(length + 1);\n  size_t top = 0;\n  stack[top++] = s[0];\n  bool valid = top > 0;\n  free(stack);\n  return valid;\n}'
+  }, 'c');
+
+  assert.equal(result.valid, true);
+});
