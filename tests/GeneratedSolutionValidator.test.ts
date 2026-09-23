@@ -27,6 +27,12 @@ test('enables C with matching Monaco mode and filename extension', () => {
   assert.equal(SOLUTION_LANGUAGE_METADATA.c.fileExtension, 'c');
 });
 
+test('enables Ruby with matching Monaco mode and filename extension', () => {
+  assert.equal(ENABLED_SOLUTION_LANGUAGES.includes('ruby'), true);
+  assert.equal(SOLUTION_LANGUAGE_METADATA.ruby.monacoLanguage, 'ruby');
+  assert.equal(SOLUTION_LANGUAGE_METADATA.ruby.fileExtension, 'rb');
+});
+
 test('accepts a complete TypeScript solution', () => {
   const result = validateGeneratedSolution({
     language: 'typescript',
