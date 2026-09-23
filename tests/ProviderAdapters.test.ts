@@ -719,6 +719,32 @@ test('Claude requests and returns a structured C solution', async () => {
   assert.match(requestBody?.messages[0].content, /Requested language: C/);
 });
 
+test('Claude requests and returns a structured Ruby solution', async () => {
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const originalFetch = globalThis.fetch;
+  let requestBody: Record<string, any> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({
+      code: 'def is_valid(s)\n  !s.empty?\nend', language: 'ruby'
+    }) }], stop_reason: 'end_turn' }), { status: 200 });
+  };
+  try {
+    const response = await new ClaudeProvider().generateSolution(
+      { title: 'Valid Parentheses', statement: 'Validate brackets.', constraints: [] } as never,
+      { name: 'Stack', explanation: 'Use a stack.' } as never,
+      { solutionLanguage: 'ruby' }
+    );
+    assert.equal(response.data.language, 'ruby');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.match(requestBody?.system, /complete Ruby solution/);
+  assert.match(requestBody?.system, /conventional Ruby def and end/);
+  assert.match(requestBody?.system, /Array as a stack with push and pop/);
+  assert.match(requestBody?.messages[0].content, /Requested language: Ruby/);
+});
+
 test('Claude reports solution truncation before parsing incomplete code JSON', async () => {
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
   const originalFetch = globalThis.fetch;
