@@ -127,6 +127,17 @@ test('bounds C trace lines to the installed source', () => {
   assert.match(result.warning || '', /outside the generated source range 1-4/);
 });
 
+test('bounds Ruby trace lines to the installed source', () => {
+  const rubyCode = 'def solve\n  result = true\n  result\nend';
+  const result = validateExecutionSteps([
+    { ...createStep('return', 'return'), line: 3 },
+    { ...createStep('outside-ruby', 'return'), line: 5 }
+  ], { sourceLineCount: rubyCode.split(/\r?\n/).length });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.steps.map((step) => step.id), ['return']);
+  assert.match(result.warning || '', /outside the generated source range 1-4/);
+});
+
 test('normalizes array values, pointers, and highlighted indices', () => {
   const step = createStep('scan', 'move-pointer');
   const result = validateExecutionSteps([{
