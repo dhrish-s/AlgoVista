@@ -72,6 +72,15 @@ test('accepts executable code in every registered solution language', () => {
   }
 });
 
+test('accepts concise idiomatic Ruby with symbols, interpolation, and a block', () => {
+  const result = validateGeneratedSolution({
+    language: 'ruby',
+    code: 'def label(values)\n  values.map do |value|\n    :"item_#{value}"\n  end\nend'
+  }, 'ruby');
+
+  assert.equal(result.valid, true);
+});
+
 test('rejects a valid solution returned in a different language than requested', () => {
   const result = validateGeneratedSolution({
     language: 'typescript',
