@@ -27,6 +27,12 @@ Represent data structures and memory handling explicitly, including allocation b
 Do not use C++ constructs such as classes, namespaces, templates, references, or STL containers.
 Do not include an unnecessary main function.
 Keep declarations and statements on stable separate lines for line-by-line tracing.`
+          : language === 'ruby'
+            ? `
+Use conventional Ruby def and end syntax with the expected method signature.
+Use Array as a stack with push and pop when the approach requires a stack.
+Avoid modifier-heavy or compressed one-line implementations.
+Keep blocks, branches, and statements on stable separate lines for line-by-line tracing.`
       : '';
   return `Generate a complete ${label} solution for the supplied algorithm problem and selected approach.
 Return only a JSON object shaped as { "code": string, "language": "${language}" }.
