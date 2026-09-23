@@ -81,6 +81,16 @@ test('accepts concise idiomatic Ruby with symbols, interpolation, and a block', 
   assert.equal(result.valid, true);
 });
 
+test('rejects Python declaration syntax disguised as Ruby', () => {
+  const result = validateGeneratedSolution({
+    language: 'ruby',
+    code: 'def solve(values):\n    return bool(values)'
+  }, 'ruby');
+
+  assert.equal(result.valid, false);
+  if (!result.valid) assert.match(result.error, /incompatible with Ruby/);
+});
+
 test('rejects a valid solution returned in a different language than requested', () => {
   const result = validateGeneratedSolution({
     language: 'typescript',
