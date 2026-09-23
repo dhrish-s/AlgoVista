@@ -906,3 +906,25 @@ test('Gemini solution generation uses a strict C response schema', async () => {
   assert.match(request?.contents || '', /Requested language: C/);
   assert.deepEqual(request?.config?.responseSchema?.properties?.language?.enum, ['c']);
 });
+
+test('Gemini solution generation uses a strict Ruby response schema', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, any> | undefined;
+  (provider as any).ai = { models: { generateContent: async (value: Record<string, any>) => {
+    request = value;
+    return {
+      text: JSON.stringify({ code: 'def solve\n  true\nend', language: 'ruby' }),
+      candidates: [{ finishReason: 'STOP' }]
+    };
+  } } };
+  const response = await provider.generateSolution(
+    { title: 'Test', statement: 'Test', constraints: [] } as never,
+    { name: 'Stack', explanation: 'Use a stack.' } as never,
+    { solutionLanguage: 'ruby' }
+  );
+  assert.equal(response.data.language, 'ruby');
+  assert.match(request?.contents || '', /conventional Ruby def and end/);
+  assert.match(request?.contents || '', /Array as a stack with push and pop/);
+  assert.match(request?.contents || '', /Requested language: Ruby/);
+  assert.deepEqual(request?.config?.responseSchema?.properties?.language?.enum, ['ruby']);
+});
