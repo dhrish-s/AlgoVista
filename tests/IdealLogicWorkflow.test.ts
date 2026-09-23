@@ -198,18 +198,20 @@ test('forwards every registered source language through Ideal Logic traces', asy
   assert.deepEqual(tracedLanguages, SOLUTION_LANGUAGES);
 });
 
-test('keeps TypeScript, Python, C++, Java, and C cached separately for one approach', () => {
+test('keeps all six solution languages cached separately for one approach', () => {
   const typescript = 'function solve(): boolean { return true; }';
   const python = 'def solve():\n    return True';
   const cpp = 'class Solution { public: bool solve() { return true; } };';
   const java = 'class Solution { public boolean solve() { return true; } }';
   const c = 'bool solve(void) { return true; }';
+  const ruby = 'def solve\n  true\nend';
   useStore.setState({ idealSolutionCache: {}, userCodeDrafts: {}, userCode: '' });
   useStore.getState().setIdealVisualization('stack', typescript, steps, 'typescript');
   useStore.getState().setIdealVisualization('stack', python, steps, 'python');
   useStore.getState().setIdealVisualization('stack', cpp, steps, 'cpp');
   useStore.getState().setIdealVisualization('stack', java, steps, 'java');
   useStore.getState().setIdealVisualization('stack', c, steps, 'c');
+  useStore.getState().setIdealVisualization('stack', ruby, steps, 'ruby');
 
   const cache = useStore.getState().idealSolutionCache.stack;
   assert.equal(cache?.typescript, typescript);
@@ -217,6 +219,7 @@ test('keeps TypeScript, Python, C++, Java, and C cached separately for one appro
   assert.equal(cache?.cpp, cpp);
   assert.equal(cache?.java, java);
   assert.equal(cache?.c, c);
+  assert.equal(cache?.ruby, ruby);
   useStore.getState().setSolutionLanguage('typescript');
   assert.equal(useStore.getState().userCode, typescript);
   useStore.getState().setSolutionLanguage('python');
@@ -227,6 +230,8 @@ test('keeps TypeScript, Python, C++, Java, and C cached separately for one appro
   assert.equal(useStore.getState().userCode, java);
   useStore.getState().setSolutionLanguage('c');
   assert.equal(useStore.getState().userCode, c);
+  useStore.getState().setSolutionLanguage('ruby');
+  assert.equal(useStore.getState().userCode, ruby);
 });
 
 test('preserves editor drafts when switching languages without generating code', () => {
