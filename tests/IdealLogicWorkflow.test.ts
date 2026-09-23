@@ -436,3 +436,34 @@ test('Sync My Code preserves manually edited C without solution generation', asy
   assert.equal(tracedCode, editedC);
   assert.equal(tracedLanguage, 'c');
 });
+
+test('Sync My Code preserves manually edited Ruby without solution generation', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  let solutionCalls = 0;
+  let tracedCode = '';
+  let tracedLanguage: string | undefined;
+  const provider = {
+    id: 'openai',
+    generateSolution: async () => {
+      solutionCalls += 1;
+      throw new Error('Ruby Sync must not generate replacement code.');
+    },
+    generateSteps: async (_problem: unknown, code: string, _case: unknown, options?: { solutionLanguage?: string }) => {
+      tracedCode = code;
+      tracedLanguage = options?.solutionLanguage;
+      return { data: steps };
+    }
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test', openai: 'test', claude: 'test' }, taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', provider);
+  const editedRuby = 'def is_valid(s)\n  stack = []\n  !stack.nil?\nend';
+  await DynamicStepGenerator.generateFromUserCode(problem, editedRuby, problem.examples[0], 'ruby');
+  assert.equal(solutionCalls, 0);
+  assert.equal(tracedCode, editedRuby);
+  assert.equal(tracedLanguage, 'ruby');
+});
