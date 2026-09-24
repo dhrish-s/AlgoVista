@@ -220,6 +220,7 @@ export interface ApproachOption {
 export interface StructuredProblem {
   id: string;
   source: ProblemSource;
+  sourceInput?: string;
   slug?: string;
   number?: string;
   title: string;
