@@ -37,6 +37,17 @@ export class AIProviderManager {
     this.settings = settings;
   }
 
+  getRequestTarget(options?: AIRequestOptions): { provider: AIProviderID; model: string } {
+    const primaryId = this.getProviderId(options);
+    const provider = this.getFallbackChain(primaryId)
+      .find((providerId) => !this.isProviderUnavailable(providerId))
+      || primaryId;
+    return {
+      provider,
+      model: options?.model || this.settings.modelNames[provider]
+    };
+  }
+
   private getProviderId(options?: AIRequestOptions): AIProviderID {
     const taskId = options?.task;
     return options?.provider ||

@@ -60,6 +60,19 @@ test('assigns operation-specific AI request deadlines', () => {
   });
 });
 
+test('resolves the provider and model used to key a request before execution', () => {
+  const manager = new AIProviderManager(settings);
+
+  assert.deepEqual(manager.getRequestTarget({ task: 'steps' }), {
+    provider: 'openai',
+    model: 'test-openai'
+  });
+  assert.deepEqual(manager.getRequestTarget({ provider: 'claude', model: 'override-claude' }), {
+    provider: 'claude',
+    model: 'override-claude'
+  });
+});
+
 test('passes the actual operation identity to each provider request', async () => {
   const operations: Array<string | undefined> = [];
   const provider = {
