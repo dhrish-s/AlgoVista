@@ -108,3 +108,33 @@ test('keeps cache writes off the caller critical path and exposes settlement', a
 
   assert.equal((await cache.listEntries()).length, 1);
 });
+
+test('throttles LRU timestamp writes to one per access interval', async () => {
+  class CountingStorage extends MemoryResultCacheStorage {
+    writes = 0;
+    override async put(value: ResultCacheEntry): Promise<void> {
+      this.writes += 1;
+      await super.put(value);
+    }
+  }
+  const storage = new CountingStorage();
+  await storage.setMetadata({ id: 'versions', versions: RESULT_CACHE_VERSIONS });
+  await storage.put(entry({ lastAccessedAt: 1 }));
+  storage.writes = 0;
+  let now = 100;
+  const cache = new ResultCache(storage, undefined, { now: () => now, touchIntervalMs: 1_000 });
+
+  await cache.lookup(entry());
+  await cache.settlePendingWrites();
+  assert.equal(storage.writes, 0);
+
+  now = 2_000;
+  await cache.lookup(entry());
+  await cache.settlePendingWrites();
+  assert.equal(storage.writes, 1);
+
+  now = 2_500;
+  await cache.lookup(entry());
+  await cache.settlePendingWrites();
+  assert.equal(storage.writes, 1);
+});

@@ -10,6 +10,13 @@ const versionsMatch = (left: ResultCacheVersionSet, right: ResultCacheVersionSet
   && left.schema === right.schema
 );
 
+export const CACHE_ACCESS_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+
+interface ResultCacheOptions {
+  now?: () => number;
+  touchIntervalMs?: number;
+}
+
 export class ResultCache {
   private activeStorage: ResultCacheStorage;
   private readonly initialization: Promise<void>;
@@ -17,7 +24,8 @@ export class ResultCache {
 
   constructor(
     primaryStorage: ResultCacheStorage = new IndexedDBResultCacheStorage(),
-    private readonly fallbackStorage: ResultCacheStorage = new MemoryResultCacheStorage()
+    private readonly fallbackStorage: ResultCacheStorage = new MemoryResultCacheStorage(),
+    private readonly options: ResultCacheOptions = {}
   ) {
     this.activeStorage = primaryStorage;
     this.initialization = this.initialize(primaryStorage);
@@ -54,16 +62,20 @@ export class ResultCache {
     if (bypass) return { hit: false, missReason: 'explicit-bypass' };
 
     const exact = await this.activeStorage.get(identity.fullKey);
-    if (exact) return { hit: true, entry: exact as ResultCacheEntry<T>, matchType: 'exact-provider' };
+    if (exact) {
+      const touched = this.touchEntry(exact);
+      return { hit: true, entry: touched as ResultCacheEntry<T>, matchType: 'exact-provider' };
+    }
 
     const compatible = await this.activeStorage.findCompatible(identity.compatibleKey);
     compatible.sort((left, right) => (
       right.createdAt - left.createdAt || left.fullKey.localeCompare(right.fullKey)
     ));
     if (compatible[0]) {
+      const touched = this.touchEntry(compatible[0]);
       return {
         hit: true,
-        entry: compatible[0] as ResultCacheEntry<T>,
+        entry: touched as ResultCacheEntry<T>,
         matchType: 'compatible-provider'
       };
     }
@@ -79,6 +91,16 @@ export class ResultCache {
 
   store(entry: ResultCacheEntry): void {
     this.trackWrite(this.ready().then(() => this.activeStorage.put(entry)));
+  }
+
+  private touchEntry(entry: ResultCacheEntry): ResultCacheEntry {
+    const now = (this.options.now || Date.now)();
+    const touchIntervalMs = this.options.touchIntervalMs ?? CACHE_ACCESS_TOUCH_INTERVAL_MS;
+    if (now - entry.lastAccessedAt < touchIntervalMs) return entry;
+
+    const touched = { ...entry, lastAccessedAt: now };
+    this.trackWrite(this.ready().then(() => this.activeStorage.put(touched)));
+    return touched;
   }
 
   private trackWrite(write: Promise<void>): void {
