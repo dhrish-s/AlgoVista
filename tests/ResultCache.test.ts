@@ -138,3 +138,29 @@ test('throttles LRU timestamp writes to one per access interval', async () => {
   await cache.settlePendingWrites();
   assert.equal(storage.writes, 1);
 });
+
+test('fills quota, evicts the oldest entry, and retries once', async () => {
+  const storage = new MemoryResultCacheStorage(30);
+  const cache = new ResultCache(storage);
+  await cache.ready();
+  cache.store(entry({ fullKey: 'trace:old', byteSize: 20, lastAccessedAt: 1 }));
+  await cache.settlePendingWrites();
+
+  cache.store(entry({ fullKey: 'trace:new', byteSize: 20, lastAccessedAt: 2 }));
+  await cache.settlePendingWrites();
+
+  assert.deepEqual((await cache.listEntries()).map((value) => value.fullKey), ['trace:new']);
+});
+
+test('degrades to memory storage when quota retry still fails', async () => {
+  const primary = new MemoryResultCacheStorage(5);
+  const fallback = new MemoryResultCacheStorage();
+  const cache = new ResultCache(primary, fallback);
+  await cache.ready();
+
+  cache.store(entry({ byteSize: 20 }));
+  await cache.settlePendingWrites();
+
+  assert.equal((await cache.listEntries()).length, 1);
+  assert.equal((await fallback.list()).length, 1);
+});

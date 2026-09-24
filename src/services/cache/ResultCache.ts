@@ -10,6 +10,10 @@ const versionsMatch = (left: ResultCacheVersionSet, right: ResultCacheVersionSet
   && left.schema === right.schema
 );
 
+const isQuotaError = (error: unknown): boolean => (
+  error instanceof DOMException && error.name === 'QuotaExceededError'
+);
+
 export const CACHE_ACCESS_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 
 interface ResultCacheOptions {
@@ -90,7 +94,35 @@ export class ResultCache {
   }
 
   store(entry: ResultCacheEntry): void {
-    this.trackWrite(this.ready().then(() => this.activeStorage.put(entry)));
+    this.trackWrite(this.ready().then(() => this.writeWithQuotaRecovery(entry)));
+  }
+
+  private async writeWithQuotaRecovery(entry: ResultCacheEntry): Promise<void> {
+    try {
+      await this.activeStorage.put(entry);
+      return;
+    } catch (error) {
+      if (!isQuotaError(error)) throw error;
+    }
+
+    const entries = await this.activeStorage.list();
+    entries.sort((left, right) => (
+      left.lastAccessedAt - right.lastAccessedAt
+      || left.createdAt - right.createdAt
+      || left.fullKey.localeCompare(right.fullKey)
+    ));
+    if (entries[0]) await this.activeStorage.delete(entries[0].fullKey);
+
+    try {
+      await this.activeStorage.put(entry);
+      return;
+    } catch (error) {
+      if (!isQuotaError(error) || this.activeStorage === this.fallbackStorage) throw error;
+    }
+
+    this.activeStorage = this.fallbackStorage;
+    await this.initializeStorage(this.fallbackStorage);
+    await this.fallbackStorage.put(entry);
   }
 
   private touchEntry(entry: ResultCacheEntry): ResultCacheEntry {
@@ -99,7 +131,7 @@ export class ResultCache {
     if (now - entry.lastAccessedAt < touchIntervalMs) return entry;
 
     const touched = { ...entry, lastAccessedAt: now };
-    this.trackWrite(this.ready().then(() => this.activeStorage.put(touched)));
+    this.trackWrite(this.ready().then(() => this.writeWithQuotaRecovery(touched)));
     return touched;
   }
 
