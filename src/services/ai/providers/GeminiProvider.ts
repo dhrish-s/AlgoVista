@@ -41,7 +41,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   async parseProblem(input: string, options?: AIRequestOptions): Promise<AIResponse<StructuredProblem>> {
-    const response = await this.ai.models.generateContent({
+    const request = {
       model: options?.model || getDefaultModelNames().gemini,
       contents: `Parse this LeetCode problem into structured JSON. 
       If the input is a URL, use your internal knowledge of the problem. 
@@ -102,7 +102,9 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
+    };
+    const requestMetrics = measureGeminiRequest(request, input.length, options);
+    const response = await this.ai.models.generateContent(request);
 
     const data = JSON.parse(response.text || '{}');
     return {
@@ -115,7 +117,8 @@ export class GeminiProvider implements AIProvider {
         inferredPatterns: []
       }),
       raw: response,
-      usage: geminiUsage(response)
+      usage: geminiUsage(response),
+      requestMetrics
     };
   }
 
