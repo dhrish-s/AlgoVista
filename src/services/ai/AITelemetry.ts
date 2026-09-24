@@ -20,6 +20,20 @@ export interface AITelemetryEntry {
 const TELEMETRY_CAPACITY = 500;
 const entries: AITelemetryEntry[] = [];
 
+const env = (): Record<string, unknown> => {
+  const viteEnv = ((import.meta as any).env || {}) as Record<string, unknown>;
+  const processEnv = typeof process !== 'undefined' ? process.env : {};
+  return { ...processEnv, ...viteEnv };
+};
+
+export const isAITelemetryEnabled = (): boolean => {
+  const values = env();
+  const isDevelopment = typeof values.DEV === 'boolean'
+    ? values.DEV
+    : values.NODE_ENV !== 'production';
+  return isDevelopment && values.VITE_AI_TELEMETRY === 'true';
+};
+
 export const appendAITelemetry = (entry: AITelemetryEntry): void => {
   entries.push({ ...entry, payload: { ...entry.payload } });
   if (entries.length > TELEMETRY_CAPACITY) {

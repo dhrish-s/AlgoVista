@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { appendAITelemetry, clearAITelemetry, getAITelemetryEntries } from '../src/services/ai/AITelemetry';
+import { appendAITelemetry, clearAITelemetry, getAITelemetryEntries, isAITelemetryEnabled } from '../src/services/ai/AITelemetry';
+
+test('enables AI telemetry only when the development flag is explicitly true', () => {
+  const previousFlag = process.env.VITE_AI_TELEMETRY;
+  const previousNodeEnv = process.env.NODE_ENV;
+  delete process.env.VITE_AI_TELEMETRY;
+  process.env.NODE_ENV = 'development';
+  assert.equal(isAITelemetryEnabled(), false);
+  process.env.VITE_AI_TELEMETRY = 'true';
+  assert.equal(isAITelemetryEnabled(), true);
+  process.env.NODE_ENV = 'production';
+  assert.equal(isAITelemetryEnabled(), false);
+  if (previousFlag === undefined) delete process.env.VITE_AI_TELEMETRY;
+  else process.env.VITE_AI_TELEMETRY = previousFlag;
+  if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = previousNodeEnv;
+});
 
 test('keeps only the latest 500 telemetry records and returns defensive copies', () => {
   clearAITelemetry();
