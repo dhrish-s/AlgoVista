@@ -2,6 +2,8 @@ import { AIProviderID, SolutionLanguage } from '../ai/types';
 
 export type ResultCacheLayer = 'parse' | 'solution' | 'trace';
 export type TraceCacheMode = 'ideal' | 'user-code';
+export type ResultCacheMatchType = 'exact-provider' | 'compatible-provider';
+export type ResultCacheMissReason = 'absent' | 'version-mismatch' | 'failed-validation' | 'explicit-bypass';
 
 export interface ResultCacheVersionSet {
   contract: number;
@@ -56,3 +58,7 @@ export interface ResultCacheStorage {
   getMetadata(): Promise<ResultCacheMetadata | undefined>;
   setMetadata(metadata: ResultCacheMetadata): Promise<void>;
 }
+
+export type ResultCacheLookup<T = unknown> =
+  | { hit: true; entry: ResultCacheEntry<T>; matchType: ResultCacheMatchType }
+  | { hit: false; missReason: ResultCacheMissReason };
