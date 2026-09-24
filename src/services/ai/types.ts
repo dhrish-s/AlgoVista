@@ -62,6 +62,7 @@ export interface AIResponse<T> {
     message?: string;
   };
   usage?: AIUsage;
+  requestMetrics?: AIRequestPayloadMetrics;
 }
 
 export interface AIProvider {
