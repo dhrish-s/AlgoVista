@@ -181,6 +181,7 @@ export class AIProviderManager {
             meta: {
               ...response.meta,
               provider: provider.id,
+              model: providerOptions.model,
               status: provider.id === primaryId ? 'success' : 'fallback',
               fallbackFrom: provider.id === primaryId ? undefined : primaryId,
               message: provider.id === primaryId

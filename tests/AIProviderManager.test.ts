@@ -104,6 +104,7 @@ test('falls back when the primary provider returns an empty trace', async () => 
   const response = await manager.generateSteps({}, '', {}, { task: 'steps' });
 
   assert.equal(response.meta?.provider, 'claude');
+  assert.equal(response.meta?.model, 'test-claude');
   assert.equal(response.meta?.status, 'fallback');
   assert.equal(response.data.length, 3);
   assert.equal(fallback.getCalls(), 1);
