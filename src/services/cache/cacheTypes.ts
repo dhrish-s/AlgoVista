@@ -44,3 +44,15 @@ export interface ResultCacheMetadata {
   id: 'versions';
   versions: ResultCacheVersionSet;
 }
+
+export interface ResultCacheStorage {
+  get(fullKey: string): Promise<ResultCacheEntry | undefined>;
+  findCompatible(compatibleKey: string): Promise<ResultCacheEntry[]>;
+  findLineage(lineageKey: string): Promise<ResultCacheEntry[]>;
+  list(): Promise<ResultCacheEntry[]>;
+  put(entry: ResultCacheEntry): Promise<void>;
+  delete(fullKey: string): Promise<void>;
+  clear(): Promise<void>;
+  getMetadata(): Promise<ResultCacheMetadata | undefined>;
+  setMetadata(metadata: ResultCacheMetadata): Promise<void>;
+}
