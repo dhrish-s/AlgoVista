@@ -133,7 +133,7 @@ export const ProblemSolver: React.FC = () => {
   const safeStatus = providerStatus || 'idle';
   const safeProviderMessage = providerMessage || '';
 
-  const handleGenerateVisualization = async (useUserCode: boolean = false) => {
+  const handleGenerateVisualization = async (useUserCode: boolean = false, bypassCache = false) => {
     if ((!selectedApproach && !useUserCode)) return;
     
     generationControllerRef.current?.abort();
@@ -156,7 +156,8 @@ export const ProblemSolver: React.FC = () => {
           userCode,
           testCase,
           solutionLanguage,
-          newController.signal
+          newController.signal,
+          bypassCache
         );
       } else if (selectedApproach) {
         const result = await generateIdealVisualization(
@@ -166,7 +167,8 @@ export const ProblemSolver: React.FC = () => {
           testCase,
           solutionLanguage,
           newController.signal,
-          setGenerationPhase
+          setGenerationPhase,
+          bypassCache
         );
         idealCode = result.code;
         steps = result.steps;
@@ -413,6 +415,17 @@ export const ProblemSolver: React.FC = () => {
                           ? generationPhase === 'solution' ? 'Generating solution' : isLongTraceWait ? 'Trace still running' : 'Generating trace'
                           : 'Sync My Code'}
                       </button>
+                      {lastVisualizationMode && currentSteps.length > 0 && (
+                        <button
+                          onClick={() => handleGenerateVisualization(lastVisualizationMode === 'user', true)}
+                          disabled={isGeneratingSteps || (lastVisualizationMode === 'ideal' && !selectedApproach)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 rounded-full border border-cyan-500/20 text-[10px] font-bold transition-all disabled:opacity-30"
+                          title="Generate a fresh trace without using the result cache"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Regenerate
+                        </button>
+                      )}
                     </div>
                   )}
                </div>
