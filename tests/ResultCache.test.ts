@@ -5,7 +5,7 @@ import { MemoryResultCacheStorage } from '../src/services/cache/MemoryResultCach
 import { ResultCache } from '../src/services/cache/ResultCache';
 import { RESULT_CACHE_VERSIONS } from '../src/services/cache/cacheVersions';
 import { ResultCacheEntry } from '../src/services/cache/cacheTypes';
-import { getResultCache, setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
+import { getResultCache, RESULT_CACHE_MAXIMUM_BYTES, setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
 import { InFlightRequestDeduplicator } from '../src/services/cache/InFlightRequestDeduplicator';
 
 const entry = (overrides: Partial<ResultCacheEntry> = {}): ResultCacheEntry => ({
@@ -227,6 +227,10 @@ test('keeps the cache service independent from session state', () => {
   assert.equal(getResultCache(), cache);
 
   setResultCacheForTests(null);
+});
+
+test('caps the production result cache at 25 MiB', () => {
+  assert.equal(RESULT_CACHE_MAXIMUM_BYTES, 25 * 1024 * 1024);
 });
 
 test('evicts a cached payload that fails current validation', async () => {
