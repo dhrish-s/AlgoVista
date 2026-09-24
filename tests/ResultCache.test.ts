@@ -5,6 +5,7 @@ import { MemoryResultCacheStorage } from '../src/services/cache/MemoryResultCach
 import { ResultCache } from '../src/services/cache/ResultCache';
 import { RESULT_CACHE_VERSIONS } from '../src/services/cache/cacheVersions';
 import { ResultCacheEntry } from '../src/services/cache/cacheTypes';
+import { getResultCache, setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
 
 const entry = (overrides: Partial<ResultCacheEntry> = {}): ResultCacheEntry => ({
   fullKey: 'trace:full',
@@ -215,4 +216,14 @@ test('records cache hit provenance and explicit miss reasons', async () => {
     if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = previousNodeEnv;
   }
+});
+
+test('keeps the cache service independent from session state', () => {
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+
+  assert.equal(getResultCache(), cache);
+  assert.equal(getResultCache(), cache);
+
+  setResultCacheForTests(null);
 });
