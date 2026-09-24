@@ -164,3 +164,16 @@ test('degrades to memory storage when quota retry still fails', async () => {
   assert.equal((await cache.listEntries()).length, 1);
   assert.equal((await fallback.list()).length, 1);
 });
+
+test('enforces a configured byte cap with LRU eviction', async () => {
+  const storage = new MemoryResultCacheStorage();
+  const cache = new ResultCache(storage, undefined, { maximumBytes: 30 });
+  await cache.ready();
+  cache.store(entry({ fullKey: 'trace:old', byteSize: 20, lastAccessedAt: 1 }));
+  await cache.settlePendingWrites();
+
+  cache.store(entry({ fullKey: 'trace:new', byteSize: 20, lastAccessedAt: 2 }));
+  await cache.settlePendingWrites();
+
+  assert.deepEqual((await cache.listEntries()).map((value) => value.fullKey), ['trace:new']);
+});

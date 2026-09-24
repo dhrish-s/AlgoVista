@@ -19,6 +19,7 @@ export const CACHE_ACCESS_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 interface ResultCacheOptions {
   now?: () => number;
   touchIntervalMs?: number;
+  maximumBytes?: number;
 }
 
 export class ResultCache {
@@ -98,6 +99,7 @@ export class ResultCache {
   }
 
   private async writeWithQuotaRecovery(entry: ResultCacheEntry): Promise<void> {
+    await this.enforceSizeLimit(entry);
     try {
       await this.activeStorage.put(entry);
       return;
@@ -123,6 +125,31 @@ export class ResultCache {
     this.activeStorage = this.fallbackStorage;
     await this.initializeStorage(this.fallbackStorage);
     await this.fallbackStorage.put(entry);
+  }
+
+  private async enforceSizeLimit(incoming: ResultCacheEntry): Promise<void> {
+    const maximumBytes = this.options.maximumBytes ?? Number.POSITIVE_INFINITY;
+    if (!Number.isFinite(maximumBytes)) return;
+
+    const entries = await this.activeStorage.list();
+    const replacedBytes = entries.find((entry) => entry.fullKey === incoming.fullKey)?.byteSize || 0;
+    let projectedBytes = entries.reduce((total, entry) => total + entry.byteSize, 0)
+      - replacedBytes
+      + incoming.byteSize;
+    const evictionCandidates = entries
+      .filter((entry) => entry.fullKey !== incoming.fullKey)
+      .sort((left, right) => (
+        left.lastAccessedAt - right.lastAccessedAt
+        || left.createdAt - right.createdAt
+        || left.fullKey.localeCompare(right.fullKey)
+      ));
+
+    while (projectedBytes > maximumBytes && evictionCandidates.length > 0) {
+      const oldest = evictionCandidates.shift();
+      if (!oldest) break;
+      await this.activeStorage.delete(oldest.fullKey);
+      projectedBytes -= oldest.byteSize;
+    }
   }
 
   private touchEntry(entry: ResultCacheEntry): ResultCacheEntry {
