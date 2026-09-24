@@ -499,6 +499,39 @@ test('OpenAI exposes reported input, output, and cached token usage', async () =
   }
 });
 
+test('OpenAI reports exact static and variable request character counts', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const originalFetch = globalThis.fetch;
+  let requestBody = '';
+  let observedMetrics: unknown;
+  globalThis.fetch = async (_input, init) => {
+    requestBody = String(init?.body);
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'Keep reasoning.' } }] }), { status: 200 });
+  };
+
+  try {
+    const response = await new OpenAIProvider().coachMessage(
+      { title: 'Test', difficulty: 'Easy' } as never,
+      'What next?',
+      [{ role: 'user', content: 'I chose a stack.' }],
+      'Track openings.',
+      { onRequestMetrics: (metrics) => { observedMetrics = metrics; } }
+    );
+    const body = JSON.parse(requestBody);
+    const variableCharacters = body.messages
+      .filter((message: any) => message.role !== 'system')
+      .reduce((sum: number, message: any) => sum + message.content.length, 0);
+    assert.deepEqual(response.requestMetrics, observedMetrics);
+    assert.deepEqual(response.requestMetrics, {
+      staticCharacters: requestBody.length - variableCharacters,
+      variableCharacters,
+      totalCharacters: requestBody.length
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('Claude exposes reported input, output, cache-read, and cache-write usage', async () => {
   process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
   const originalFetch = globalThis.fetch;

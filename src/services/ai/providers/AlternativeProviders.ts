@@ -119,6 +119,22 @@ export class OpenAIProvider implements AIProvider {
   ): Promise<any> {
     assertProviderAvailable(this.id);
 
+    const body = {
+      model: options?.model || 'gpt-4o-mini',
+      messages,
+      ...(jsonObject ? { response_format: { type: 'json_object' } } : {})
+    };
+    const variableCharacters = messages
+      .filter((message) => message.role !== 'system')
+      .reduce((sum, message) => sum + message.content.length, 0);
+    const totalCharacters = JSON.stringify(body).length;
+    const requestMetrics = {
+      staticCharacters: totalCharacters - variableCharacters,
+      variableCharacters,
+      totalCharacters
+    };
+    options?.onRequestMetrics?.(requestMetrics);
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       signal: options?.signal,
@@ -126,11 +142,7 @@ export class OpenAIProvider implements AIProvider {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${getProviderApiKey(this.id)}`
       },
-      body: JSON.stringify({
-        model: options?.model || 'gpt-4o-mini',
-        messages,
-        ...(jsonObject ? { response_format: { type: 'json_object' } } : {})
-      })
+      body: JSON.stringify(body)
     });
 
     if (options?.signal?.aborted) throw asAbortError();
@@ -145,7 +157,7 @@ export class OpenAIProvider implements AIProvider {
       throw new Error('OpenAI returned an empty response.');
     }
 
-    return { content, raw: json, usage: openAIUsage(json) };
+    return { content, raw: json, usage: openAIUsage(json), requestMetrics };
   }
 
   async parseProblem(input: string, options?: AIRequestOptions): Promise<AIResponse<StructuredProblem>> {
