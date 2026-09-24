@@ -1024,6 +1024,27 @@ test('Gemini reports exact reasoning request character counts', async () => {
   });
 });
 
+test('Gemini reports exact hint request character counts', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, unknown> | undefined;
+  (provider as any).ai = { models: { generateContent: async (value: Record<string, unknown>) => {
+    request = value;
+    return { text: JSON.stringify({ hints: ['Use a map.'], nextSmallStep: 'Track complements.' }) };
+  } } };
+
+  const title = 'Two Sum';
+  const code = 'function twoSum() {}';
+  const response = await provider.generateHints({ title } as never, code);
+  const totalCharacters = JSON.stringify(request).length;
+  const variableCharacters = title.length + code.length;
+
+  assert.deepEqual(response.requestMetrics, {
+    staticCharacters: totalCharacters - variableCharacters,
+    variableCharacters,
+    totalCharacters
+  });
+});
+
 test('Gemini solution generation uses a strict Python response schema', async () => {
   const provider = new GeminiProvider();
   let request: Record<string, any> | undefined;

@@ -147,7 +147,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   async generateHints(problem: StructuredProblem, userCode: string, options?: AIRequestOptions): Promise<AIResponse<HintGeneration>> {
-    const response = await this.ai.models.generateContent({
+    const request = {
       model: options?.model || getDefaultModelNames().gemini,
       contents: `Provide hints for this problem and code: ${problem.title}\nCode:\n${userCode}`,
       config: {
@@ -161,9 +161,11 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
+    };
+    const requestMetrics = measureGeminiRequest(request, problem.title.length + userCode.length, options);
+    const response = await this.ai.models.generateContent(request);
 
-    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response) };
+    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response), requestMetrics };
   }
 
   async explainCode(problem: StructuredProblem, code: string, options?: AIRequestOptions): Promise<AIResponse<CodeExplanation>> {
