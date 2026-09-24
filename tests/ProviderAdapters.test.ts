@@ -980,6 +980,29 @@ test('Gemini exposes reported input, output, and cache-read token usage', async 
   assert.equal('cacheWriteTokens' in (response.usage || {}), false);
 });
 
+test('Gemini reports exact parsing request character counts', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, unknown> | undefined;
+  let observedMetrics: unknown;
+  (provider as any).ai = { models: { generateContent: async (value: Record<string, unknown>) => {
+    request = value;
+    return { text: JSON.stringify({ title: 'Two Sum', statement: 'Find two values.', approaches: [] }) };
+  } } };
+
+  const input = 'Two Sum problem input';
+  const response = await provider.parseProblem(input, {
+    onRequestMetrics: (metrics) => { observedMetrics = metrics; }
+  });
+
+  const totalCharacters = JSON.stringify(request).length;
+  assert.deepEqual(response.requestMetrics, observedMetrics);
+  assert.deepEqual(response.requestMetrics, {
+    staticCharacters: totalCharacters - input.length,
+    variableCharacters: input.length,
+    totalCharacters
+  });
+});
+
 test('Gemini solution generation uses a strict Python response schema', async () => {
   const provider = new GeminiProvider();
   let request: Record<string, any> | undefined;
