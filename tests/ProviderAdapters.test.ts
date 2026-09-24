@@ -470,6 +470,35 @@ test('solution adapters request structured TypeScript tied to the selected appro
   assert.match(bodies[1].messages[0].content, /Stack-based Matching/);
 });
 
+test('OpenAI exposes reported input, output, and cached token usage', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    choices: [{ message: { content: JSON.stringify({
+      code: 'function solve(): boolean { return true; }', language: 'typescript'
+    }) }, finish_reason: 'stop' }],
+    usage: {
+      prompt_tokens: 120,
+      completion_tokens: 30,
+      prompt_tokens_details: { cached_tokens: 80 }
+    }
+  }), { status: 200 });
+
+  try {
+    const response = await new OpenAIProvider().generateSolution(
+      { title: 'Test', statement: 'Test', constraints: [] } as never,
+      { name: 'Approach', explanation: 'Solve it.' } as never
+    );
+    assert.deepEqual(response.usage, {
+      inputTokens: 120,
+      outputTokens: 30,
+      cacheReadTokens: 80
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('OpenAI requests and returns a structured Python solution', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   const originalFetch = globalThis.fetch;

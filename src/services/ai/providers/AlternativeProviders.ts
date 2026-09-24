@@ -94,6 +94,14 @@ const safeUnsupported = <T>(providerId: AIProviderID, data: T): AIResponse<T> =>
   }
 });
 
+const openAIUsage = (raw: any) => ({
+  inputTokens: typeof raw?.usage?.prompt_tokens === 'number' ? raw.usage.prompt_tokens : undefined,
+  outputTokens: typeof raw?.usage?.completion_tokens === 'number' ? raw.usage.completion_tokens : undefined,
+  cacheReadTokens: typeof raw?.usage?.prompt_tokens_details?.cached_tokens === 'number'
+    ? raw.usage.prompt_tokens_details.cached_tokens
+    : undefined
+});
+
 export class OpenAIProvider implements AIProvider {
   id: AIProviderID = 'openai';
 
@@ -130,19 +138,16 @@ export class OpenAIProvider implements AIProvider {
       throw new Error('OpenAI returned an empty response.');
     }
 
-    return { content, raw: json };
+    return { content, raw: json, usage: openAIUsage(json) };
   }
 
   async parseProblem(input: string, options?: AIRequestOptions): Promise<AIResponse<StructuredProblem>> {
-    const { content, raw } = await this.requestText([
+    const response = await this.requestText([
       { role: 'system', content: PARSE_INSTRUCTIONS },
       { role: 'user', content: input }
     ], options);
 
-    return {
-      data: normalizeProblem(extractJson<Partial<StructuredProblem>>(content, {})),
-      raw
-    };
+    return { ...response, data: normalizeProblem(extractJson<Partial<StructuredProblem>>(response.content, {})) };
   }
 
   async evaluateReasoning(): Promise<AIResponse<ReasoningEvaluation>> {
@@ -158,7 +163,7 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>> {
-    const { content, raw } = await this.requestText([
+    const response = await this.requestText([
       { role: 'system', content: STEP_INSTRUCTIONS },
       {
         role: 'user',
@@ -173,14 +178,14 @@ ${code}`
     ], options);
 
     return {
-      data: normalizeSteps(extractJson<ExecutionStep[]>(content, [])),
-      raw
+      ...response,
+      data: normalizeSteps(extractJson<ExecutionStep[]>(response.content, []))
     };
   }
 
   async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
     const language = options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE;
-    const { content, raw } = await this.requestText([
+    const response = await this.requestText([
       { role: 'system', content: buildSolutionInstructions(language) },
       {
         role: 'user',
@@ -188,15 +193,15 @@ ${code}`
       }
     ], options, true);
 
-    if (raw?.choices?.[0]?.finish_reason === 'length') {
+    if (response.raw?.choices?.[0]?.finish_reason === 'length') {
       const error: any = new Error('OpenAI solution response was truncated after reaching the model output-token limit.');
       error.name = 'ProviderTruncationError';
       throw error;
     }
 
     return {
-      data: extractJson<GeneratedSolution>(content, {} as GeneratedSolution),
-      raw
+      ...response,
+      data: extractJson<GeneratedSolution>(response.content, {} as GeneratedSolution)
     };
   }
 
@@ -212,7 +217,7 @@ ${code}`
       content: message.content
     }));
 
-    const { content, raw } = await this.requestText([
+    const response = await this.requestText([
       { role: 'system', content: COACH_INSTRUCTIONS },
       ...history,
       {
@@ -225,8 +230,8 @@ New user message: ${userMessage}`
     ], options);
 
     return {
-      data: { content, isError: false },
-      raw
+      ...response,
+      data: { content: response.content, isError: false }
     };
   }
 
