@@ -103,13 +103,18 @@ export class ProblemLoaderService {
           source,
           parsingConfidence: confidence
         } as StructuredProblem;
+        const producerTarget = {
+          provider: meta?.provider || target.provider,
+          model: meta?.model || target.model
+        };
+        const producerIdentity = await createParseCacheIdentity(text, producerTarget);
 
         cache.store(createResultCacheEntry({
-          identity,
+          identity: producerIdentity,
           layer: 'parse',
           versions: RESULT_CACHE_VERSIONS,
-          producerProvider: meta?.provider || target.provider,
-          producerModel: meta?.model || target.model,
+          producerProvider: producerTarget.provider,
+          producerModel: producerTarget.model,
           payload: parsedProblem
         }));
         return { problem: parsedProblem, providerMeta: meta };

@@ -9,6 +9,7 @@ import { ResultCache } from '../src/services/cache/ResultCache';
 import { setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
 import { StructuredProblem } from '../src/types';
 import { useStore } from '../src/store/useStore';
+import { createParseCacheIdentity } from '../src/services/cache/cacheIdentities';
 
 test('preserves the exact source input on a parsed problem', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
@@ -192,5 +193,51 @@ test('keeps persistent parse results across a workspace session reset', async ()
   } finally {
     setResultCacheForTests(null);
     useStore.getState().resetSession();
+  }
+});
+
+test('stores a fallback parse under the provider that produced it', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'claude',
+    modelNames: { gemini: 'test-gemini', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: { parse: 'openai' }
+  });
+  const invalidPrimary = {
+    id: 'openai',
+    parseProblem: async () => { throw new Error('Primary parse failed.'); }
+  } as unknown as AIProvider;
+  const fallback = {
+    id: 'claude',
+    parseProblem: async () => ({
+      data: {
+        id: 'two-sum', source: 'pasted-text', title: 'Two Sum',
+        statement: 'Find two array values that add to the requested target value.',
+        examples: [{ input: 'nums = [2,7], target = 9', output: '[0,1]' }],
+        constraints: [], approaches: [], inferredPatterns: [], parsingConfidence: 1
+      }
+    })
+  } as unknown as AIProvider;
+  const providers = (manager as unknown as { providers: Map<AIProviderID, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', invalidPrimary);
+  providers.set('claude', fallback);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+
+  try {
+    await ProblemLoaderService.parseProblemText('Two Sum');
+    await cache.settlePendingWrites();
+    const stored = await cache.listEntries();
+    const fallbackIdentity = await createParseCacheIdentity('Two Sum', {
+      provider: 'claude', model: 'test-claude'
+    });
+
+    assert.equal(stored.length, 1);
+    assert.equal(stored[0].fullKey, fallbackIdentity.fullKey);
+    assert.equal(stored[0].producerProvider, 'claude');
+  } finally {
+    setResultCacheForTests(null);
   }
 });
