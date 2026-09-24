@@ -87,4 +87,5 @@ export interface AIRequestOptions {
   sourceLineCount?: number;
   solutionLanguage?: SolutionLanguage;
   onStream?: (chunk: string) => void;
+  onRequestMetrics?: (metrics: AIRequestPayloadMetrics) => void;
 }
