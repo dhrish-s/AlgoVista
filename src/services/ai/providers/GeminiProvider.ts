@@ -169,7 +169,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   async explainCode(problem: StructuredProblem, code: string, options?: AIRequestOptions): Promise<AIResponse<CodeExplanation>> {
-    const response = await this.ai.models.generateContent({
+    const request = {
       model: options?.model || getDefaultModelNames().gemini,
       contents: `Explain this code for problem ${problem.title}:\n${code}`,
       config: {
@@ -184,13 +184,15 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
+    };
+    const requestMetrics = measureGeminiRequest(request, problem.title.length + code.length, options);
+    const response = await this.ai.models.generateContent(request);
 
     if (options?.signal?.aborted) {
       throw new Error('AbortError');
     }
 
-    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response) };
+    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response), requestMetrics };
   }
 
   async generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>> {
