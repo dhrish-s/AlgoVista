@@ -6,6 +6,17 @@ import { DEFAULT_SOLUTION_LANGUAGE, SOLUTION_LANGUAGE_METADATA } from '../soluti
 import { buildSolutionInstructions, buildSolutionRequest } from '../solutionPrompt';
 import { getDefaultModelNames, getProviderApiKey, normalizeProblem } from '../providerConfig';
 
+const geminiUsage = (response: any) => {
+  const usage = response?.usageMetadata;
+  const candidates = typeof usage?.candidatesTokenCount === 'number' ? usage.candidatesTokenCount : 0;
+  const thoughts = typeof usage?.thoughtsTokenCount === 'number' ? usage.thoughtsTokenCount : 0;
+  return {
+    inputTokens: typeof usage?.promptTokenCount === 'number' ? usage.promptTokenCount : undefined,
+    outputTokens: candidates || thoughts ? candidates + thoughts : undefined,
+    cacheReadTokens: typeof usage?.cachedContentTokenCount === 'number' ? usage.cachedContentTokenCount : undefined
+  };
+};
+
 export class GeminiProvider implements AIProvider {
   id: AIProviderID = 'gemini';
   private ai: GoogleGenAI;
@@ -88,7 +99,8 @@ export class GeminiProvider implements AIProvider {
         requiresUserConfirmation: Boolean(data.requiresUserConfirmation),
         inferredPatterns: []
       }),
-      raw: response
+      raw: response,
+      usage: geminiUsage(response)
     };
   }
 
@@ -111,7 +123,7 @@ export class GeminiProvider implements AIProvider {
       }
     });
 
-    return { data: JSON.parse(response.text || '{}'), raw: response };
+    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response) };
   }
 
   async generateHints(problem: StructuredProblem, userCode: string, options?: AIRequestOptions): Promise<AIResponse<HintGeneration>> {
@@ -131,7 +143,7 @@ export class GeminiProvider implements AIProvider {
       }
     });
 
-    return { data: JSON.parse(response.text || '{}'), raw: response };
+    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response) };
   }
 
   async explainCode(problem: StructuredProblem, code: string, options?: AIRequestOptions): Promise<AIResponse<CodeExplanation>> {
@@ -156,7 +168,7 @@ export class GeminiProvider implements AIProvider {
       throw new Error('AbortError');
     }
 
-    return { data: JSON.parse(response.text || '{}'), raw: response };
+    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response) };
   }
 
   async generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>> {
@@ -443,7 +455,7 @@ export class GeminiProvider implements AIProvider {
       }
     });
 
-    return { data: JSON.parse(response.text || '[]'), raw: response };
+    return { data: JSON.parse(response.text || '[]'), raw: response, usage: geminiUsage(response) };
   }
 
   async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
@@ -473,7 +485,7 @@ export class GeminiProvider implements AIProvider {
         throw error;
       }
 
-      return { data: JSON.parse(response.text || '{}'), raw: response };
+      return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response) };
     } catch (error: any) {
       if (options?.signal?.aborted || error?.name === 'AbortError' || error?.name === 'ProviderTruncationError') {
         throw error;
@@ -517,7 +529,8 @@ New User Input: ${userMessage}`;
         content: response.text || "I'm having trouble thinking today. Try again?",
         isError: false
       },
-      raw: response
+      raw: response,
+      usage: geminiUsage(response)
     };
   }
 }

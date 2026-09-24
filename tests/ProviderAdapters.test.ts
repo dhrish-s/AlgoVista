@@ -887,6 +887,32 @@ test('Gemini retains raw SDK responses outside solution generation', async () =>
   assert.equal(response.raw, rawResponse);
 });
 
+test('Gemini exposes reported input, output, and cache-read token usage', async () => {
+  const provider = new GeminiProvider();
+  (provider as any).ai = { models: { generateContent: async () => ({
+    text: JSON.stringify({ code: 'function solve() {}', language: 'typescript' }),
+    candidates: [{ finishReason: 'STOP' }],
+    usageMetadata: {
+      promptTokenCount: 200,
+      candidatesTokenCount: 40,
+      thoughtsTokenCount: 15,
+      cachedContentTokenCount: 120
+    }
+  }) } };
+
+  const response = await provider.generateSolution(
+    { title: 'Test', statement: 'Test', constraints: [] } as never,
+    { name: 'Approach', explanation: 'Solve it.' } as never
+  );
+
+  assert.deepEqual(response.usage, {
+    inputTokens: 200,
+    outputTokens: 55,
+    cacheReadTokens: 120
+  });
+  assert.equal('cacheWriteTokens' in (response.usage || {}), false);
+});
+
 test('Gemini solution generation uses a strict Python response schema', async () => {
   const provider = new GeminiProvider();
   let request: Record<string, any> | undefined;
