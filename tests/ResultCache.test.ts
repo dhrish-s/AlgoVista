@@ -6,6 +6,7 @@ import { ResultCache } from '../src/services/cache/ResultCache';
 import { RESULT_CACHE_VERSIONS } from '../src/services/cache/cacheVersions';
 import { ResultCacheEntry } from '../src/services/cache/cacheTypes';
 import { getResultCache, setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
+import { InFlightRequestDeduplicator } from '../src/services/cache/InFlightRequestDeduplicator';
 
 const entry = (overrides: Partial<ResultCacheEntry> = {}): ResultCacheEntry => ({
   fullKey: 'trace:full',
@@ -242,4 +243,43 @@ test('evicts a cached payload that fails current validation', async () => {
 
   assert.deepEqual(result, { hit: false, missReason: 'failed-validation' });
   assert.deepEqual(await cache.listEntries(), []);
+});
+
+test('deduplicates concurrent work without letting one consumer cancel another', async () => {
+  const deduplicator = new InFlightRequestDeduplicator<string>();
+  const firstController = new AbortController();
+  let calls = 0;
+  let releaseProvider: ((value: string) => void) | undefined;
+  let sharedSignal: AbortSignal | undefined;
+  const execute = (signal: AbortSignal) => {
+    calls += 1;
+    sharedSignal = signal;
+    return new Promise<string>((resolve) => { releaseProvider = resolve; });
+  };
+
+  const first = deduplicator.run('trace:key', firstController.signal, execute);
+  const second = deduplicator.run('trace:key', undefined, execute);
+  firstController.abort();
+  await assert.rejects(first, { name: 'AbortError' });
+  assert.equal(sharedSignal?.aborted, false);
+
+  releaseProvider?.('shared result');
+  assert.equal(await second, 'shared result');
+  assert.equal(calls, 1);
+});
+
+test('aborts shared provider work when its final consumer cancels', async () => {
+  const deduplicator = new InFlightRequestDeduplicator<string>();
+  const controller = new AbortController();
+  let sharedSignal: AbortSignal | undefined;
+  const request = deduplicator.run('trace:key', controller.signal, (signal) => {
+    sharedSignal = signal;
+    return new Promise<string>(() => undefined);
+  });
+
+  await Promise.resolve();
+  controller.abort();
+
+  await assert.rejects(request, { name: 'AbortError' });
+  assert.equal(sharedSignal?.aborted, true);
 });
