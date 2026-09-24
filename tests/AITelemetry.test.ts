@@ -144,3 +144,41 @@ test('records rejected provider attempts and the fallback that succeeds', async 
   if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = previousNodeEnv;
 });
+
+test('records a successful primary provider attempt', async () => {
+  const previousFlag = process.env.VITE_AI_TELEMETRY;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.VITE_AI_TELEMETRY = 'true';
+  process.env.NODE_ENV = 'development';
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  clearAITelemetry();
+
+  const manager = new AIProviderManager({
+    defaultProvider: 'openai',
+    fallbackProvider: 'claude',
+    modelNames: { gemini: 'test-gemini', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: {}
+  });
+  const provider = {
+    id: 'openai',
+    parseProblem: async () => ({
+      data: { title: 'Two Sum' },
+      usage: { inputTokens: 7, outputTokens: 3 },
+      requestMetrics: { staticCharacters: 40, variableCharacters: 7, totalCharacters: 47 }
+    })
+  } as unknown as AIProvider;
+  (manager as unknown as { providers: Map<AIProviderID, AIProvider> }).providers.set('openai', provider);
+
+  await manager.parseProblem('Two Sum');
+
+  const records = getAITelemetryEntries();
+  assert.equal(records.length, 1);
+  assert.equal(records[0].outcome, 'success');
+  assert.equal(records[0].provider, 'openai');
+  assert.equal(records[0].inputTokens, 7);
+  clearAITelemetry();
+  if (previousFlag === undefined) delete process.env.VITE_AI_TELEMETRY;
+  else process.env.VITE_AI_TELEMETRY = previousFlag;
+  if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = previousNodeEnv;
+});
