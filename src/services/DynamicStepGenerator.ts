@@ -133,7 +133,8 @@ export class DynamicStepGenerator {
     solutionCode: string,
     testCase: { input: string; output: string },
     language: SolutionLanguage = DEFAULT_SOLUTION_LANGUAGE,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    bypassCache = false
   ): Promise<ExecutionStep[]> {
     const aiManager = getAIManager();
     if (!aiManager) throw new Error("AI Manager not initialized.");
@@ -160,7 +161,7 @@ export class DynamicStepGenerator {
       problem, approach.id, language, solutionCode, testCase, 'ideal', target
     );
     const cache = getResultCache();
-    const cached = await cache.lookup<ExecutionStep[]>(identity, false, (payload) => (
+    const cached = await cache.lookup<ExecutionStep[]>(identity, bypassCache, (payload) => (
       validateExecutionSteps(payload, { sourceLineCount }).valid
     ));
 
@@ -213,7 +214,8 @@ export class DynamicStepGenerator {
     userCode: string,
     testCase: { input: string; output: string },
     language: SolutionLanguage = DEFAULT_SOLUTION_LANGUAGE,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    bypassCache = false
   ): Promise<ExecutionStep[]> {
     const aiManager = getAIManager();
     if (!aiManager) throw new Error("AI Manager not initialized.");
@@ -240,7 +242,7 @@ export class DynamicStepGenerator {
       problem, null, language, userCode, testCase, 'user-code', target
     );
     const cache = getResultCache();
-    const cached = await cache.lookup<ExecutionStep[]>(identity, false, (payload) => (
+    const cached = await cache.lookup<ExecutionStep[]>(identity, bypassCache, (payload) => (
       validateExecutionSteps(payload, { sourceLineCount }).valid
     ));
 

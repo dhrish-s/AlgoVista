@@ -545,6 +545,12 @@ test('reuses a validated Ideal Logic trace from persistent cache', async () => {
     assert.equal(traceCalls, 1);
     assert.deepEqual([...cached], [...fresh]);
     assert.equal(cached.providerMeta?.status, 'cached');
+
+    const regenerated = await DynamicStepGenerator.generate(
+      problem, stackApproach, source, problem.examples[0], 'typescript', undefined, true
+    ) as typeof fresh & { providerMeta?: { status?: string } };
+    assert.equal(traceCalls, 2);
+    assert.equal(regenerated.providerMeta?.status, 'success');
   } finally {
     setResultCacheForTests(null);
   }

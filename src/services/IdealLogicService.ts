@@ -17,11 +17,14 @@ export const generateIdealVisualization = async (
   testCase: { input: string; output: string },
   language: SolutionLanguage,
   signal?: AbortSignal,
-  onPhaseChange?: (phase: IdealGenerationPhase) => void
+  onPhaseChange?: (phase: IdealGenerationPhase) => void,
+  bypassTraceCache = false
 ): Promise<IdealVisualizationResult> => {
   if (!cachedCode) onPhaseChange?.('solution');
   const code = cachedCode || (await DynamicStepGenerator.generateSolution(problem, approach, language, signal)).code;
   onPhaseChange?.('trace');
-  const steps = await DynamicStepGenerator.generate(problem, approach, code, testCase, language, signal);
+  const steps = await DynamicStepGenerator.generate(
+    problem, approach, code, testCase, language, signal, bypassTraceCache
+  );
   return { code, steps, reusedCode: Boolean(cachedCode) };
 };
