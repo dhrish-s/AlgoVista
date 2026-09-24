@@ -28,3 +28,19 @@ export interface ResultCacheIdentity {
   compatibleKey: string;
   lineageKey: string;
 }
+
+export interface ResultCacheEntry<T = unknown> extends ResultCacheIdentity {
+  layer: ResultCacheLayer;
+  versions: ResultCacheVersionSet;
+  producerProvider: AIProviderID;
+  producerModel: string;
+  payload: T;
+  byteSize: number;
+  createdAt: number;
+  lastAccessedAt: number;
+}
+
+export interface ResultCacheMetadata {
+  id: 'versions';
+  versions: ResultCacheVersionSet;
+}
