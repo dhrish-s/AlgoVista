@@ -227,5 +227,6 @@ export class ResultCache {
   async clear(): Promise<void> {
     await this.ready();
     await this.activeStorage.clear();
+    await this.activeStorage.setMetadata({ id: 'versions', versions: RESULT_CACHE_VERSIONS });
   }
 }

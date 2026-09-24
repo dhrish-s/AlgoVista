@@ -283,3 +283,16 @@ test('aborts shared provider work when its final consumer cancels', async () => 
   await assert.rejects(request, { name: 'AbortError' });
   assert.equal(sharedSignal?.aborted, true);
 });
+
+test('restores version metadata after clearing cached results', async () => {
+  const storage = new MemoryResultCacheStorage();
+  const cache = new ResultCache(storage);
+  await cache.ready();
+  cache.store(entry());
+  await cache.settlePendingWrites();
+
+  await cache.clear();
+
+  assert.deepEqual(await cache.listEntries(), []);
+  assert.deepEqual((await storage.getMetadata())?.versions, RESULT_CACHE_VERSIONS);
+});
