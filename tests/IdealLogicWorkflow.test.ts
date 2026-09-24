@@ -10,7 +10,7 @@ import { MemoryResultCacheStorage } from '../src/services/cache/MemoryResultCach
 import { ResultCache } from '../src/services/cache/ResultCache';
 import { setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
 import { SOLUTION_LANGUAGES } from '../src/services/ai/solutionLanguages';
-import { createSolutionCacheIdentity } from '../src/services/cache/cacheIdentities';
+import { createSolutionCacheIdentity, createTraceCacheIdentity } from '../src/services/cache/cacheIdentities';
 
 const problem = {
   id: 'valid-parentheses',
@@ -764,6 +764,49 @@ test('stores a fallback solution under the provider that produced it', async () 
     const stored = await cache.listEntries();
     const fallbackIdentity = await createSolutionCacheIdentity(
       problem, stackApproach, 'typescript', { provider: 'claude', model: 'test-claude' }
+    );
+
+    assert.equal(stored.length, 1);
+    assert.equal(stored[0].fullKey, fallbackIdentity.fullKey);
+    assert.equal(stored[0].producerProvider, 'claude');
+  } finally {
+    setResultCacheForTests(null);
+  }
+});
+
+test('stores a fallback Ideal Logic trace under the provider that produced it', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const primary = {
+    id: 'openai',
+    generateSteps: async () => ({ data: [] })
+  } as unknown as AIProvider;
+  const fallback = {
+    id: 'claude',
+    generateSteps: async () => ({ data: steps })
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'claude',
+    modelNames: { gemini: 'test', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', primary);
+  providers.set('claude', fallback);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+  const source = 'function isValid(): boolean {\n  return true;\n}';
+
+  try {
+    await DynamicStepGenerator.generate(
+      problem, stackApproach, source, problem.examples[0], 'typescript'
+    );
+    await cache.settlePendingWrites();
+    const stored = await cache.listEntries();
+    const fallbackIdentity = await createTraceCacheIdentity(
+      problem, stackApproach.id, 'typescript', source, problem.examples[0], 'ideal',
+      { provider: 'claude', model: 'test-claude' }
     );
 
     assert.equal(stored.length, 1);
