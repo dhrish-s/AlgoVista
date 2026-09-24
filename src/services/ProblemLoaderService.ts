@@ -70,6 +70,7 @@ export class ProblemLoaderService {
 
     const parsedProblem = {
       ...data,
+      sourceInput: text,
       slug: metadata?.slug,
       source,
       parsingConfidence: confidence,
