@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canonicalizeProblemInput, createResultCacheIdentity, stableSerializeKeyValue } from '../src/services/cache/cacheKey';
 import { ResultCacheKeyDescriptor } from '../src/services/cache/cacheTypes';
+import { measureSerializedBytes } from '../src/services/cache/cacheSizing';
 
 test('canonicalizes only problem-input whitespace', () => {
   assert.equal(
@@ -57,4 +58,10 @@ test('changes trace identity for source, test case, or trace mode changes', asyn
   assert.notEqual(original.lineageKey, sourceChanged.lineageKey);
   assert.notEqual(original.lineageKey, caseChanged.lineageKey);
   assert.notEqual(original.lineageKey, modeChanged.lineageKey);
+});
+
+test('measures serialized payload size in UTF-8 bytes', () => {
+  const payload = { explanation: 'café' };
+  assert.equal(measureSerializedBytes(payload), new TextEncoder().encode(JSON.stringify(payload)).byteLength);
+  assert.ok(measureSerializedBytes(payload) > JSON.stringify(payload).length);
 });
