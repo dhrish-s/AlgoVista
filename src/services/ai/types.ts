@@ -46,6 +46,12 @@ export interface AIUsage {
   cacheWriteTokens?: number;
 }
 
+export interface AIRequestPayloadMetrics {
+  staticCharacters: number;
+  variableCharacters: number;
+  totalCharacters: number;
+}
+
 export interface AIResponse<T> {
   data: T;
   raw?: any;
