@@ -145,7 +145,7 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                   <span className="text-[10px] font-bold text-slate-500 uppercase">Last Action</span>
                   <span className={cn(
                     "text-xs font-bold uppercase",
-                    providerStatus === 'fallback' ? "text-amber-400" : providerStatus === 'failed' || providerStatus === 'unavailable' ? "text-rose-400" : "text-emerald-400"
+                    providerStatus === 'fallback' ? "text-amber-400" : providerStatus === 'cached' ? "text-cyan-400" : providerStatus === 'failed' || providerStatus === 'unavailable' ? "text-rose-400" : "text-emerald-400"
                   )}>
                     {providerStatus}
                   </span>

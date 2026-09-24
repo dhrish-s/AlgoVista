@@ -286,7 +286,7 @@ export const ProblemSolver: React.FC = () => {
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
               <span className="text-slate-500">AI Provider</span>
               <span className={cn(
-                safeStatus === 'fallback' ? "text-amber-400" : safeStatus === 'failed' || safeStatus === 'unavailable' ? "text-rose-400" : "text-indigo-400"
+                safeStatus === 'fallback' ? "text-amber-400" : safeStatus === 'cached' ? "text-cyan-400" : safeStatus === 'failed' || safeStatus === 'unavailable' ? "text-rose-400" : "text-indigo-400"
               )}>
                 {safeProvider} / {safeStatus}
               </span>

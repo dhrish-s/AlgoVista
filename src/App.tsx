@@ -146,6 +146,8 @@ export default function App() {
                "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-widest",
                providerStatus === 'fallback'
                 ? "bg-amber-500/5 border-amber-500/20 text-amber-400"
+                : providerStatus === 'cached'
+                ? "bg-cyan-500/5 border-cyan-500/20 text-cyan-400"
                 : providerStatus === 'failed' || providerStatus === 'unavailable'
                 ? "bg-rose-500/5 border-rose-500/20 text-rose-400"
                 : "bg-slate-900 border-slate-800 text-slate-500"

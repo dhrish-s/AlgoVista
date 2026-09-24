@@ -123,7 +123,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({ problem }) => {
            <div>
               <h3 className="text-xs font-bold text-white uppercase tracking-tight">AI Reasoning Coach</h3>
               <p className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest">
-                {currentProvider} / {providerStatus === 'fallback' ? 'Fallback Active' : 'Minimal Hint Mode'}
+                {currentProvider} / {providerStatus === 'fallback' ? 'Fallback Active' : providerStatus === 'cached' ? 'Cached Result' : 'Minimal Hint Mode'}
               </p>
            </div>
         </div>
