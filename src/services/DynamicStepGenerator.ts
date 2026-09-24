@@ -8,6 +8,7 @@ import { createResultCacheEntry } from './cache/cacheEntries';
 import { createSolutionCacheIdentity, createTraceCacheIdentity } from './cache/cacheIdentities';
 import { RESULT_CACHE_VERSIONS } from './cache/cacheVersions';
 import { getResultCache } from './cache/resultCacheInstance';
+import { InFlightRequestDeduplicator } from './cache/InFlightRequestDeduplicator';
 
 export interface GeneratedExecutionSteps extends Array<ExecutionStep> {
   generationFeedback?: {
@@ -54,6 +55,7 @@ const buildGeneratedSteps = (
 
 export class DynamicStepGenerator {
   private static latestRequestMap: Record<string, number> = {};
+  private static readonly inFlightSolutions = new InFlightRequestDeduplicator<GeneratedIdealSolution>();
 
   static async generateSolution(
     problem: StructuredProblem,
@@ -96,15 +98,24 @@ export class DynamicStepGenerator {
       };
     }
 
-    const { data, meta } = await aiManager.generateSolution(problem, approach, requestOptions);
-    cache.store(createResultCacheEntry({
-      identity,
-      layer: 'solution',
-      versions: RESULT_CACHE_VERSIONS,
-      producerProvider: meta?.provider || target.provider,
-      producerModel: meta?.model || target.model,
-      payload: data
-    }));
+    const generated = await DynamicStepGenerator.inFlightSolutions.run(
+      identity.fullKey,
+      signal,
+      async (sharedSignal) => {
+        const { data, meta } = await aiManager.generateSolution(
+          problem, approach, { ...requestOptions, signal: sharedSignal }
+        );
+        cache.store(createResultCacheEntry({
+          identity,
+          layer: 'solution',
+          versions: RESULT_CACHE_VERSIONS,
+          producerProvider: meta?.provider || target.provider,
+          producerModel: meta?.model || target.model,
+          payload: data
+        }));
+        return { code: data.code, providerMeta: meta };
+      }
+    );
 
     if (DynamicStepGenerator.latestRequestMap[key] !== reqId || signal?.aborted) {
       const error: any = new Error('AbortError');
@@ -112,7 +123,7 @@ export class DynamicStepGenerator {
       throw error;
     }
 
-    return { code: data.code, providerMeta: meta };
+    return generated;
   }
 
   static async generate(
