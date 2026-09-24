@@ -39,6 +39,13 @@ export interface CoachMessage {
   isError?: boolean;
 }
 
+export interface AIUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+}
+
 export interface AIResponse<T> {
   data: T;
   raw?: any;
@@ -48,10 +55,7 @@ export interface AIResponse<T> {
     fallbackFrom?: AIProviderID;
     message?: string;
   };
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-  };
+  usage?: AIUsage;
 }
 
 export interface AIProvider {
