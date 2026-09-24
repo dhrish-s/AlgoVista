@@ -491,9 +491,10 @@ export class GeminiProvider implements AIProvider {
   async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
     try {
       const language = options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE;
-      const response = await this.ai.models.generateContent({
+      const solutionRequest = buildSolutionRequest(problem, approach, language);
+      const request = {
         model: options?.model || getDefaultModelNames().gemini,
-        contents: `${buildSolutionInstructions(language)}\n\n${buildSolutionRequest(problem, approach, language)}`,
+        contents: `${buildSolutionInstructions(language)}\n\n${solutionRequest}`,
         config: {
           abortSignal: options?.signal,
           responseMimeType: 'application/json',
@@ -506,7 +507,9 @@ export class GeminiProvider implements AIProvider {
             required: ['code', 'language']
           }
         }
-      });
+      };
+      const requestMetrics = measureGeminiRequest(request, solutionRequest.length, options);
+      const response = await this.ai.models.generateContent(request);
 
       const finishReason = (response as any)?.candidates?.[0]?.finishReason;
       if (finishReason === 'MAX_TOKENS') {
@@ -515,7 +518,7 @@ export class GeminiProvider implements AIProvider {
         throw error;
       }
 
-      return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response) };
+      return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response), requestMetrics };
     } catch (error: any) {
       if (options?.signal?.aborted || error?.name === 'AbortError' || error?.name === 'ProviderTruncationError') {
         throw error;

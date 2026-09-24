@@ -4,6 +4,7 @@ import { AIProviderManager } from '../src/services/ai/AIProviderManager';
 import { ClaudeProvider, OpenAIProvider } from '../src/services/ai/providers/AlternativeProviders';
 import { GeminiProvider } from '../src/services/ai/providers/GeminiProvider';
 import { SOLUTION_LANGUAGE_METADATA } from '../src/services/ai/solutionLanguages';
+import { buildSolutionRequest } from '../src/services/ai/solutionPrompt';
 
 type PrivateOpenAIProvider = {
   requestText(messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>): Promise<unknown>;
@@ -1089,6 +1090,27 @@ test('Gemini reports exact step-generation request character counts', async () =
     + JSON.stringify(input).length
     + code.length
     + SOLUTION_LANGUAGE_METADATA.typescript.label.length;
+
+  assert.deepEqual(response.requestMetrics, {
+    staticCharacters: totalCharacters - variableCharacters,
+    variableCharacters,
+    totalCharacters
+  });
+});
+
+test('Gemini reports exact solution-generation request character counts', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, unknown> | undefined;
+  (provider as any).ai = { models: { generateContent: async (value: Record<string, unknown>) => {
+    request = value;
+    return { text: JSON.stringify({ code: 'function solve() {}', language: 'typescript' }) };
+  } } };
+
+  const problem = { title: 'Two Sum', statement: 'Find two values.', constraints: ['Use one answer.'] } as never;
+  const approach = { name: 'Hash Map', explanation: 'Store complements.' } as never;
+  const response = await provider.generateSolution(problem, approach);
+  const totalCharacters = JSON.stringify(request).length;
+  const variableCharacters = buildSolutionRequest(problem, approach, 'typescript').length;
 
   assert.deepEqual(response.requestMetrics, {
     staticCharacters: totalCharacters - variableCharacters,
