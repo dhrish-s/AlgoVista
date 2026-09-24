@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canonicalizeProblemInput, createResultCacheIdentity, stableSerializeKeyValue } from '../src/services/cache/cacheKey';
+import { createParseCacheIdentity, createSolutionCacheIdentity, createTraceCacheIdentity } from '../src/services/cache/cacheIdentities';
 import { ResultCacheKeyDescriptor } from '../src/services/cache/cacheTypes';
 import { measureSerializedBytes } from '../src/services/cache/cacheSizing';
 
@@ -58,6 +59,33 @@ test('changes trace identity for source, test case, or trace mode changes', asyn
   assert.notEqual(original.lineageKey, sourceChanged.lineageKey);
   assert.notEqual(original.lineageKey, caseChanged.lineageKey);
   assert.notEqual(original.lineageKey, modeChanged.lineageKey);
+});
+
+test('builds layer-specific identities from every result input', async () => {
+  const target = { provider: 'claude' as const, model: 'claude-sonnet-5' };
+  const problem = {
+    id: 'two-sum', source: 'pasted-text' as const, sourceInput: '  Two   Sum  ', title: 'Two Sum',
+    statement: 'Find two values.', examples: [{ input: '[2,7], 9', output: '[0,1]' }],
+    constraints: [], inferredPatterns: [], parsingConfidence: 1
+  };
+  const approach = {
+    id: 'hash-map', name: 'Hash Map', explanation: 'Store complements.',
+    complexity: { time: 'O(n)', space: 'O(n)' }, isOptimal: true
+  };
+
+  const parse = await createParseCacheIdentity('Two Sum', target);
+  const solution = await createSolutionCacheIdentity(problem, approach, 'typescript', target);
+  const idealTrace = await createTraceCacheIdentity(
+    problem, approach.id, 'typescript', 'const answer = true;', problem.examples[0], 'ideal', target
+  );
+  const userTrace = await createTraceCacheIdentity(
+    problem, approach.id, 'typescript', 'const answer = true;', problem.examples[0], 'user-code', target
+  );
+
+  assert.match(parse.fullKey, /^parse:/);
+  assert.match(solution.fullKey, /^solution:/);
+  assert.match(idealTrace.fullKey, /^trace:/);
+  assert.notEqual(idealTrace.fullKey, userTrace.fullKey);
 });
 
 test('measures serialized payload size in UTF-8 bytes', () => {
