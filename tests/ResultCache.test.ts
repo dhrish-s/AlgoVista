@@ -142,6 +142,29 @@ test('throttles LRU timestamp writes to one per access interval', async () => {
   assert.equal(storage.writes, 1);
 });
 
+test('coalesces rapid LRU touches before the first write settles', async () => {
+  let releaseWrite: (() => void) | undefined;
+  class DelayedCountingStorage extends MemoryResultCacheStorage {
+    writes = 0;
+    override async put(value: ResultCacheEntry): Promise<void> {
+      this.writes += 1;
+      await new Promise<void>((resolve) => { releaseWrite = resolve; });
+      await super.put(value);
+    }
+  }
+  const storage = new DelayedCountingStorage();
+  await storage.setMetadata({ id: 'versions', versions: RESULT_CACHE_VERSIONS });
+  await MemoryResultCacheStorage.prototype.put.call(storage, entry({ lastAccessedAt: 1 }));
+  let now = 2_000;
+  const cache = new ResultCache(storage, undefined, { now: () => now++, touchIntervalMs: 1_000 });
+
+  await Promise.all(Array.from({ length: 20 }, () => cache.lookup(entry())));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(storage.writes, 1);
+  releaseWrite?.();
+  await cache.settlePendingWrites();
+});
+
 test('fills quota, evicts the oldest entry, and retries once', async () => {
   const storage = new MemoryResultCacheStorage(30);
   const cache = new ResultCache(storage);

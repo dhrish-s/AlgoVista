@@ -31,6 +31,7 @@ export class ResultCache {
   private activeStorage: ResultCacheStorage;
   private readonly initialization: Promise<void>;
   private readonly pendingWrites = new Set<Promise<void>>();
+  private readonly lastTouchByKey = new Map<string, number>();
 
   constructor(
     primaryStorage: ResultCacheStorage = new IndexedDBResultCacheStorage(),
@@ -205,9 +206,11 @@ export class ResultCache {
   private touchEntry(entry: ResultCacheEntry): ResultCacheEntry {
     const now = (this.options.now || Date.now)();
     const touchIntervalMs = this.options.touchIntervalMs ?? CACHE_ACCESS_TOUCH_INTERVAL_MS;
-    if (now - entry.lastAccessedAt < touchIntervalMs) return entry;
+    const lastTouch = Math.max(entry.lastAccessedAt, this.lastTouchByKey.get(entry.fullKey) ?? 0);
+    if (now - lastTouch < touchIntervalMs) return entry;
 
     const touched = { ...entry, lastAccessedAt: now };
+    this.lastTouchByKey.set(entry.fullKey, now);
     this.trackWrite(this.ready().then(() => this.writeWithQuotaRecovery(touched)));
     return touched;
   }
@@ -227,6 +230,7 @@ export class ResultCache {
   async clear(): Promise<void> {
     await this.ready();
     await this.activeStorage.clear();
+    this.lastTouchByKey.clear();
     await this.activeStorage.setMetadata({ id: 'versions', versions: RESULT_CACHE_VERSIONS });
   }
 }
