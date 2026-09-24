@@ -258,16 +258,25 @@ export class DynamicStepGenerator {
       });
     }
 
-    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, userCode, testCase, requestOptions);
-    const steps = buildGeneratedSteps(rawSteps, sourceLineCount, meta);
-    cache.store(createResultCacheEntry({
-      identity,
-      layer: 'trace',
-      versions: RESULT_CACHE_VERSIONS,
-      producerProvider: meta?.provider || target.provider,
-      producerModel: meta?.model || target.model,
-      payload: [...steps]
-    }));
+    const steps = await DynamicStepGenerator.inFlightTraces.run(
+      identity.fullKey,
+      signal,
+      async (sharedSignal) => {
+        const { data: rawSteps, meta } = await aiManager.generateSteps(
+          problem, userCode, testCase, { ...requestOptions, signal: sharedSignal }
+        );
+        const generatedSteps = buildGeneratedSteps(rawSteps, sourceLineCount, meta);
+        cache.store(createResultCacheEntry({
+          identity,
+          layer: 'trace',
+          versions: RESULT_CACHE_VERSIONS,
+          producerProvider: meta?.provider || target.provider,
+          producerModel: meta?.model || target.model,
+          payload: [...generatedSteps]
+        }));
+        return generatedSteps;
+      }
+    );
 
     if (DynamicStepGenerator.latestRequestMap[key] !== reqId) {
       const err: any = new Error('AbortError');
