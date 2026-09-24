@@ -56,6 +56,7 @@ const buildGeneratedSteps = (
 export class DynamicStepGenerator {
   private static latestRequestMap: Record<string, number> = {};
   private static readonly inFlightSolutions = new InFlightRequestDeduplicator<GeneratedIdealSolution>();
+  private static readonly inFlightTraces = new InFlightRequestDeduplicator<GeneratedExecutionSteps>();
 
   static async generateSolution(
     problem: StructuredProblem,
@@ -177,16 +178,25 @@ export class DynamicStepGenerator {
       });
     }
 
-    const { data: rawSteps, meta } = await aiManager.generateSteps(problem, solutionCode, testCase, requestOptions);
-    const steps = buildGeneratedSteps(rawSteps, sourceLineCount, meta);
-    cache.store(createResultCacheEntry({
-      identity,
-      layer: 'trace',
-      versions: RESULT_CACHE_VERSIONS,
-      producerProvider: meta?.provider || target.provider,
-      producerModel: meta?.model || target.model,
-      payload: [...steps]
-    }));
+    const steps = await DynamicStepGenerator.inFlightTraces.run(
+      identity.fullKey,
+      signal,
+      async (sharedSignal) => {
+        const { data: rawSteps, meta } = await aiManager.generateSteps(
+          problem, solutionCode, testCase, { ...requestOptions, signal: sharedSignal }
+        );
+        const generatedSteps = buildGeneratedSteps(rawSteps, sourceLineCount, meta);
+        cache.store(createResultCacheEntry({
+          identity,
+          layer: 'trace',
+          versions: RESULT_CACHE_VERSIONS,
+          producerProvider: meta?.provider || target.provider,
+          producerModel: meta?.model || target.model,
+          payload: [...generatedSteps]
+        }));
+        return generatedSteps;
+      }
+    );
 
     // Ignore if a newer request started
     if (DynamicStepGenerator.latestRequestMap[key] !== reqId) {

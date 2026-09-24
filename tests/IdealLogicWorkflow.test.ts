@@ -632,3 +632,48 @@ test('deduplicates concurrent generated-solution requests', async () => {
     setResultCacheForTests(null);
   }
 });
+
+test('deduplicates concurrent Ideal Logic trace requests', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  let calls = 0;
+  let release: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const provider = {
+    id: 'openai',
+    generateSteps: async () => {
+      calls += 1;
+      await gate;
+      return { data: steps };
+    }
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test', openai: 'test-openai', claude: 'test' },
+    taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', provider);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+  const source = 'function isValid(): boolean {\n  return true;\n}';
+
+  try {
+    const first = DynamicStepGenerator.generate(
+      problem, stackApproach, source, problem.examples[0], 'typescript'
+    );
+    const second = DynamicStepGenerator.generate(
+      problem, stackApproach, source, problem.examples[0], 'typescript'
+    );
+    await Promise.resolve();
+    release?.();
+    const [firstResult, secondResult] = await Promise.allSettled([first, second]);
+
+    assert.equal(calls, 1);
+    assert.equal(firstResult.status, 'rejected');
+    assert.equal((firstResult as PromiseRejectedResult).reason.name, 'AbortError');
+    assert.equal(secondResult.status, 'fulfilled');
+  } finally {
+    setResultCacheForTests(null);
+  }
+});
