@@ -123,7 +123,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   async evaluateReasoning(problem: StructuredProblem, reasoning: string, options?: AIRequestOptions): Promise<AIResponse<ReasoningEvaluation>> {
-    const response = await this.ai.models.generateContent({
+    const request = {
       model: options?.model || getDefaultModelNames().gemini,
       contents: `Problem: ${problem.title}\nUser Reasoning: ${reasoning}\n\nEvaluate if this approach is correct and optimal.`,
       config: {
@@ -139,9 +139,11 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
+    };
+    const requestMetrics = measureGeminiRequest(request, problem.title.length + reasoning.length, options);
+    const response = await this.ai.models.generateContent(request);
 
-    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response) };
+    return { data: JSON.parse(response.text || '{}'), raw: response, usage: geminiUsage(response), requestMetrics };
   }
 
   async generateHints(problem: StructuredProblem, userCode: string, options?: AIRequestOptions): Promise<AIResponse<HintGeneration>> {

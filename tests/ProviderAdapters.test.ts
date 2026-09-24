@@ -1003,6 +1003,27 @@ test('Gemini reports exact parsing request character counts', async () => {
   });
 });
 
+test('Gemini reports exact reasoning request character counts', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, unknown> | undefined;
+  (provider as any).ai = { models: { generateContent: async (value: Record<string, unknown>) => {
+    request = value;
+    return { text: JSON.stringify({ isValid: true, score: 1, feedback: 'Good' }) };
+  } } };
+
+  const title = 'Two Sum';
+  const reasoning = 'Store earlier values in a map.';
+  const response = await provider.evaluateReasoning({ title } as never, reasoning);
+  const totalCharacters = JSON.stringify(request).length;
+  const variableCharacters = title.length + reasoning.length;
+
+  assert.deepEqual(response.requestMetrics, {
+    staticCharacters: totalCharacters - variableCharacters,
+    variableCharacters,
+    totalCharacters
+  });
+});
+
 test('Gemini solution generation uses a strict Python response schema', async () => {
   const provider = new GeminiProvider();
   let request: Record<string, any> | undefined;
