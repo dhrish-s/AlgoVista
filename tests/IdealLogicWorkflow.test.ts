@@ -510,3 +510,42 @@ test('reuses a validated generated solution from persistent cache', async () => 
     setResultCacheForTests(null);
   }
 });
+
+test('reuses a validated Ideal Logic trace from persistent cache', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  let traceCalls = 0;
+  const provider = {
+    id: 'openai',
+    generateSteps: async () => {
+      traceCalls += 1;
+      return { data: steps };
+    }
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test', openai: 'test-openai', claude: 'test' },
+    taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', provider);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+  const source = 'function isValid(): boolean {\n  return true;\n}';
+
+  try {
+    const fresh = await DynamicStepGenerator.generate(
+      problem, stackApproach, source, problem.examples[0], 'typescript'
+    );
+    await cache.settlePendingWrites();
+    const cached = await DynamicStepGenerator.generate(
+      problem, stackApproach, source, problem.examples[0], 'typescript'
+    ) as typeof fresh & { providerMeta?: { status?: string } };
+
+    assert.equal(traceCalls, 1);
+    assert.deepEqual([...cached], [...fresh]);
+    assert.equal(cached.providerMeta?.status, 'cached');
+  } finally {
+    setResultCacheForTests(null);
+  }
+});
