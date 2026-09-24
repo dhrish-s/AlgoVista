@@ -1,14 +1,16 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Settings, Cpu, Zap, Shield, HelpCircle, Save } from 'lucide-react';
+import { Settings, Cpu, Zap, Shield, HelpCircle, Save, Trash2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { AIProviderID } from '../services/ai/types';
 import { cn } from '../lib/utils';
 import { getAIManager } from '../services/ai/AIProviderManager';
 import { getProviderAvailability } from '../services/ai/providerConfig';
+import { getResultCache } from '../services/cache/resultCacheInstance';
 
 export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { aiSettings, setAISettings, currentProvider, providerStatus, providerMessage, setProviderStatus } = useStore();
+  const [isClearingCache, setIsClearingCache] = React.useState(false);
 
   const handleProviderChange = (providerId: AIProviderID) => {
     const provider = providers.find((p) => p.id === providerId);
@@ -40,6 +42,16 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     }
     setAISettings({ fallbackProvider: providerId });
     getAIManager({ ...aiSettings, fallbackProvider: providerId });
+  };
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      await getResultCache().clear();
+      setProviderStatus('idle', 'Cached AI results were cleared. Current workspace data was kept.');
+    } finally {
+      setIsClearingCache(false);
+    }
   };
 
   const baseProviders: { id: AIProviderID; name: string; desc: string; icon: any }[] = [
@@ -158,7 +170,8 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
 
            <section>
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Workspace Control</h3>
-              <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-2xl flex items-center justify-between">
+              <div className="flex flex-col gap-3">
+               <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-2xl flex items-center justify-between">
                  <div className="flex flex-col gap-1">
                     <span className="text-sm font-bold text-white leading-none">Reset Panel Layout</span>
                     <span className="text-[10px] text-slate-500">Restore default workspace proportions</span>
@@ -170,8 +183,23 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                   }}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-[10px] font-bold transition-all border border-white/5 active:scale-95"
                  >
-                    RESET NOW
+                   RESET NOW
                  </button>
+               </div>
+               <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-2xl flex items-center justify-between">
+                 <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold text-white leading-none">Clear cached results</span>
+                    <span className="text-[10px] text-slate-500">Keep workspace progress and request fresh AI results next time</span>
+                 </div>
+                 <button
+                  onClick={handleClearCache}
+                  disabled={isClearingCache}
+                  className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl text-[10px] font-bold transition-all border border-rose-500/20 active:scale-95 disabled:opacity-40"
+                 >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {isClearingCache ? 'CLEARING' : 'CLEAR CACHE'}
+                 </button>
+               </div>
               </div>
            </section>
 
