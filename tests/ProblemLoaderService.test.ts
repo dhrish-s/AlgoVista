@@ -8,6 +8,7 @@ import { MemoryResultCacheStorage } from '../src/services/cache/MemoryResultCach
 import { ResultCache } from '../src/services/cache/ResultCache';
 import { setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
 import { StructuredProblem } from '../src/types';
+import { useStore } from '../src/store/useStore';
 
 test('preserves the exact source input on a parsed problem', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
@@ -149,5 +150,47 @@ test('deduplicates concurrent parsing while keeping stale consumers isolated', a
     assert.equal(secondResult.status, 'fulfilled');
   } finally {
     setResultCacheForTests(null);
+  }
+});
+
+test('keeps persistent parse results across a workspace session reset', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test-gemini', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: { parse: 'openai' }
+  });
+  let calls = 0;
+  const provider = {
+    id: 'openai',
+    parseProblem: async () => {
+      calls += 1;
+      return {
+        data: {
+          id: 'two-sum', source: 'pasted-text', title: 'Two Sum',
+          statement: 'Find two array values that add to the requested target value.',
+          examples: [{ input: 'nums = [2,7], target = 9', output: '[0,1]' }],
+          constraints: [], approaches: [], inferredPatterns: [], parsingConfidence: 1
+        }
+      };
+    }
+  } as unknown as AIProvider;
+  (manager as unknown as { providers: Map<AIProviderID, AIProvider> }).providers.set('openai', provider);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+
+  try {
+    const parsed = await ProblemLoaderService.parseProblemText('Two Sum');
+    useStore.getState().setCurrentProblem(parsed);
+    await cache.settlePendingWrites();
+    useStore.getState().resetSession();
+    const reloaded = await ProblemLoaderService.parseProblemText('Two Sum');
+
+    assert.equal(calls, 1);
+    assert.equal(useStore.getState().currentProblem, null);
+    assert.equal((reloaded as StructuredProblem & { __providerMeta?: { status?: string } }).__providerMeta?.status, 'cached');
+  } finally {
+    setResultCacheForTests(null);
+    useStore.getState().resetSession();
   }
 });
