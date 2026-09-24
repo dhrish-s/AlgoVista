@@ -106,12 +106,19 @@ export class DynamicStepGenerator {
         const { data, meta } = await aiManager.generateSolution(
           problem, approach, { ...requestOptions, signal: sharedSignal }
         );
+        const producerTarget = {
+          provider: meta?.provider || target.provider,
+          model: meta?.model || target.model
+        };
+        const producerIdentity = await createSolutionCacheIdentity(
+          problem, approach, language, producerTarget
+        );
         cache.store(createResultCacheEntry({
-          identity,
+          identity: producerIdentity,
           layer: 'solution',
           versions: RESULT_CACHE_VERSIONS,
-          producerProvider: meta?.provider || target.provider,
-          producerModel: meta?.model || target.model,
+          producerProvider: producerTarget.provider,
+          producerModel: producerTarget.model,
           payload: data
         }));
         return { code: data.code, providerMeta: meta };

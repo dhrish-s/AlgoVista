@@ -10,6 +10,7 @@ import { MemoryResultCacheStorage } from '../src/services/cache/MemoryResultCach
 import { ResultCache } from '../src/services/cache/ResultCache';
 import { setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
 import { SOLUTION_LANGUAGES } from '../src/services/ai/solutionLanguages';
+import { createSolutionCacheIdentity } from '../src/services/cache/cacheIdentities';
 
 const problem = {
   id: 'valid-parentheses',
@@ -724,6 +725,50 @@ test('deduplicates concurrent Sync My Code trace requests', async () => {
     assert.equal(firstResult.status, 'rejected');
     assert.equal((firstResult as PromiseRejectedResult).reason.name, 'AbortError');
     assert.equal(secondResult.status, 'fulfilled');
+  } finally {
+    setResultCacheForTests(null);
+  }
+});
+
+test('stores a fallback solution under the provider that produced it', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const primary = {
+    id: 'openai',
+    generateSolution: async () => ({ data: { code: '', language: 'typescript' } })
+  } as unknown as AIProvider;
+  const fallback = {
+    id: 'claude',
+    generateSolution: async () => ({
+      data: {
+        code: 'function isValid(value: string): boolean {\n  return value.length > 0;\n}',
+        language: 'typescript'
+      }
+    })
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'claude',
+    modelNames: { gemini: 'test', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', primary);
+  providers.set('claude', fallback);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+
+  try {
+    await DynamicStepGenerator.generateSolution(problem, stackApproach, 'typescript');
+    await cache.settlePendingWrites();
+    const stored = await cache.listEntries();
+    const fallbackIdentity = await createSolutionCacheIdentity(
+      problem, stackApproach, 'typescript', { provider: 'claude', model: 'test-claude' }
+    );
+
+    assert.equal(stored.length, 1);
+    assert.equal(stored[0].fullKey, fallbackIdentity.fullKey);
+    assert.equal(stored[0].producerProvider, 'claude');
   } finally {
     setResultCacheForTests(null);
   }
