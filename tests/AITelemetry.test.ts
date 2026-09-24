@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { appendAITelemetry, clearAITelemetry, exportAITelemetryJSON, getAITelemetryEntries, isAITelemetryEnabled, recordAITelemetry } from '../src/services/ai/AITelemetry';
+import { appendAITelemetry, clearAITelemetry, exportAICacheTelemetryJSON, exportAITelemetryJSON, getAICacheTelemetryEntries, getAITelemetryEntries, isAITelemetryEnabled, recordAICacheTelemetry, recordAITelemetry } from '../src/services/ai/AITelemetry';
 import { AIProviderManager } from '../src/services/ai/AIProviderManager';
 import { AIProvider, AIProviderID, AIProviderSettings } from '../src/services/ai/types';
 
@@ -88,6 +88,32 @@ test('exports the current telemetry buffer as formatted JSON', () => {
   assert.deepEqual(JSON.parse(exportAITelemetryJSON()), getAITelemetryEntries());
   assert.match(exportAITelemetryJSON(), /\n  \{/);
   clearAITelemetry();
+});
+
+test('records bounded cache telemetry only when development telemetry is enabled', () => {
+  const previousFlag = process.env.VITE_AI_TELEMETRY;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.VITE_AI_TELEMETRY = 'true';
+  process.env.NODE_ENV = 'development';
+  clearAITelemetry();
+
+  for (let index = 0; index < 505; index += 1) {
+    recordAICacheTelemetry({
+      layer: 'trace', result: index % 2 === 0 ? 'hit' : 'miss',
+      missReason: index % 2 === 0 ? undefined : 'absent',
+      bytesServed: index
+    });
+  }
+
+  const records = getAICacheTelemetryEntries();
+  assert.equal(records.length, 500);
+  assert.equal(records[0].bytesServed, 5);
+  assert.deepEqual(JSON.parse(exportAICacheTelemetryJSON()), records);
+  clearAITelemetry();
+  if (previousFlag === undefined) delete process.env.VITE_AI_TELEMETRY;
+  else process.env.VITE_AI_TELEMETRY = previousFlag;
+  if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = previousNodeEnv;
 });
 
 test('records rejected provider attempts and the fallback that succeeds', async () => {

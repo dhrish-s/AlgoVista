@@ -31,6 +31,7 @@ export interface AICacheTelemetryEntry {
 
 const TELEMETRY_CAPACITY = 500;
 const entries: AITelemetryEntry[] = [];
+const cacheEntries: AICacheTelemetryEntry[] = [];
 
 const env = (): Record<string, unknown> => {
   const viteEnv = ((import.meta as any).env || {}) as Record<string, unknown>;
@@ -87,6 +88,28 @@ export const getAITelemetryEntries = (): AITelemetryEntry[] => entries.map((entr
 
 export const exportAITelemetryJSON = (): string => JSON.stringify(getAITelemetryEntries(), null, 2);
 
+export const recordAICacheTelemetry = (entry: Omit<AICacheTelemetryEntry, 'timestamp'>): void => {
+  if (!isAITelemetryEnabled()) return;
+  cacheEntries.push({
+    timestamp: new Date().toISOString(),
+    layer: entry.layer,
+    result: entry.result,
+    bytesServed: entry.bytesServed,
+    ...(entry.missReason === undefined ? {} : { missReason: entry.missReason }),
+    ...(entry.matchType === undefined ? {} : { matchType: entry.matchType }),
+    ...(entry.producerProvider === undefined ? {} : { producerProvider: entry.producerProvider }),
+    ...(entry.producerModel === undefined ? {} : { producerModel: entry.producerModel })
+  });
+  if (cacheEntries.length > TELEMETRY_CAPACITY) {
+    cacheEntries.splice(0, cacheEntries.length - TELEMETRY_CAPACITY);
+  }
+};
+
+export const getAICacheTelemetryEntries = (): AICacheTelemetryEntry[] => cacheEntries.map((entry) => ({ ...entry }));
+
+export const exportAICacheTelemetryJSON = (): string => JSON.stringify(getAICacheTelemetryEntries(), null, 2);
+
 export const clearAITelemetry = (): void => {
   entries.length = 0;
+  cacheEntries.length = 0;
 };
