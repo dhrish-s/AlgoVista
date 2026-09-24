@@ -499,6 +499,38 @@ test('OpenAI exposes reported input, output, and cached token usage', async () =
   }
 });
 
+test('Claude exposes reported input, output, cache-read, and cache-write usage', async () => {
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    content: [{ type: 'text', text: JSON.stringify({
+      code: 'function solve(): boolean { return true; }', language: 'typescript'
+    }) }],
+    stop_reason: 'end_turn',
+    usage: {
+      input_tokens: 140,
+      output_tokens: 35,
+      cache_read_input_tokens: 90,
+      cache_creation_input_tokens: 12
+    }
+  }), { status: 200 });
+
+  try {
+    const response = await new ClaudeProvider().generateSolution(
+      { title: 'Test', statement: 'Test', constraints: [] } as never,
+      { name: 'Approach', explanation: 'Solve it.' } as never
+    );
+    assert.deepEqual(response.usage, {
+      inputTokens: 140,
+      outputTokens: 35,
+      cacheReadTokens: 90,
+      cacheWriteTokens: 12
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('OpenAI requests and returns a structured Python solution', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   const originalFetch = globalThis.fetch;

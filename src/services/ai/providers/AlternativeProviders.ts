@@ -102,6 +102,13 @@ const openAIUsage = (raw: any) => ({
     : undefined
 });
 
+const claudeUsage = (raw: any) => ({
+  inputTokens: typeof raw?.usage?.input_tokens === 'number' ? raw.usage.input_tokens : undefined,
+  outputTokens: typeof raw?.usage?.output_tokens === 'number' ? raw.usage.output_tokens : undefined,
+  cacheReadTokens: typeof raw?.usage?.cache_read_input_tokens === 'number' ? raw.usage.cache_read_input_tokens : undefined,
+  cacheWriteTokens: typeof raw?.usage?.cache_creation_input_tokens === 'number' ? raw.usage.cache_creation_input_tokens : undefined
+});
+
 export class OpenAIProvider implements AIProvider {
   id: AIProviderID = 'openai';
 
@@ -318,15 +325,15 @@ export class ClaudeProvider implements AIProvider {
       throw new Error('Claude returned an empty response.');
     }
 
-    return { content, raw: json };
+    return { content, raw: json, usage: claudeUsage(json) };
   }
 
   async parseProblem(input: string, options?: AIRequestOptions): Promise<AIResponse<StructuredProblem>> {
-    const { content, raw } = await this.requestText(PARSE_INSTRUCTIONS, input, options);
+    const response = await this.requestText(PARSE_INSTRUCTIONS, input, options);
 
     return {
-      data: normalizeProblem(extractJson<Partial<StructuredProblem>>(content, {})),
-      raw
+      ...response,
+      data: normalizeProblem(extractJson<Partial<StructuredProblem>>(response.content, {}))
     };
   }
 
@@ -343,7 +350,7 @@ export class ClaudeProvider implements AIProvider {
   }
 
   async generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>> {
-    const { content, raw } = await this.requestText(
+    const response = await this.requestText(
       STEP_INSTRUCTIONS,
       `Problem: ${problem.title}
 Statement: ${problem.statement}
@@ -357,14 +364,14 @@ ${code}`,
     );
 
     return {
-      data: normalizeSteps(extractJson<ExecutionStep[]>(content, [])),
-      raw
+      ...response,
+      data: normalizeSteps(extractJson<ExecutionStep[]>(response.content, []))
     };
   }
 
   async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
     const language = options?.solutionLanguage || DEFAULT_SOLUTION_LANGUAGE;
-    const { content, raw } = await this.requestText(
+    const response = await this.requestText(
       buildSolutionInstructions(language),
       buildSolutionRequest(problem, approach, language),
       options,
@@ -372,8 +379,8 @@ ${code}`,
     );
 
     return {
-      data: extractJson<GeneratedSolution>(content, {} as GeneratedSolution),
-      raw
+      ...response,
+      data: extractJson<GeneratedSolution>(response.content, {} as GeneratedSolution)
     };
   }
 
@@ -385,7 +392,7 @@ ${code}`,
     options?: AIRequestOptions
   ): Promise<AIResponse<CoachMessage>> {
     const historyText = chatHistory.slice(-8).map((message) => `${message.role === 'user' ? 'User' : 'Coach'}: ${message.content}`).join('\n');
-    const { content, raw } = await this.requestText(
+    const response = await this.requestText(
       COACH_INSTRUCTIONS,
       `Problem: ${problem.title}
 Difficulty: ${problem.difficulty || 'Unknown'}
@@ -398,8 +405,8 @@ New user message: ${userMessage}`,
     );
 
     return {
-      data: { content, isError: false },
-      raw
+      ...response,
+      data: { content: response.content, isError: false }
     };
   }
 
