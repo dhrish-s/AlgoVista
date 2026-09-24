@@ -1,4 +1,5 @@
 import { AIProviderID, AIRequestOperation, AIRequestPayloadMetrics, AIUsage } from './types';
+import { ResultCacheLayer, ResultCacheMatchType, ResultCacheMissReason } from '../cache/cacheTypes';
 
 export type AITelemetryOutcome = 'success' | 'fallback' | 'rejected' | 'timeout' | 'failed' | 'cancelled';
 
@@ -15,6 +16,17 @@ export interface AITelemetryEntry {
   payload: AIRequestPayloadMetrics;
   outcome: AITelemetryOutcome;
   message?: string;
+}
+
+export interface AICacheTelemetryEntry {
+  timestamp: string;
+  layer: ResultCacheLayer;
+  result: 'hit' | 'miss';
+  missReason?: ResultCacheMissReason;
+  matchType?: ResultCacheMatchType;
+  bytesServed: number;
+  producerProvider?: AIProviderID;
+  producerModel?: string;
 }
 
 const TELEMETRY_CAPACITY = 500;
