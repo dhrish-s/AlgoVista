@@ -182,3 +182,42 @@ test('records a successful primary provider attempt', async () => {
   if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = previousNodeEnv;
 });
+
+test('records a timed-out provider before fallback succeeds', async () => {
+  const previousFlag = process.env.VITE_AI_TELEMETRY;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.VITE_AI_TELEMETRY = 'true';
+  process.env.NODE_ENV = 'development';
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  clearAITelemetry();
+
+  const manager = new AIProviderManager({
+    defaultProvider: 'openai',
+    fallbackProvider: 'claude',
+    modelNames: { gemini: 'test-gemini', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: {}
+  });
+  const primary = {
+    id: 'openai',
+    parseProblem: async () => new Promise(() => undefined)
+  } as unknown as AIProvider;
+  const fallback = {
+    id: 'claude',
+    parseProblem: async () => ({ data: { title: 'Two Sum' } })
+  } as unknown as AIProvider;
+  const providers = (manager as unknown as { providers: Map<AIProviderID, AIProvider> }).providers;
+  providers.set('openai', primary);
+  providers.set('claude', fallback);
+
+  await manager.parseProblem('Two Sum', { timeoutMs: 5 });
+
+  const records = getAITelemetryEntries();
+  assert.deepEqual(records.map((record) => record.outcome), ['timeout', 'fallback']);
+  assert.match(records[0].message || '', /timed out after 5 ms/);
+  clearAITelemetry();
+  if (previousFlag === undefined) delete process.env.VITE_AI_TELEMETRY;
+  else process.env.VITE_AI_TELEMETRY = previousFlag;
+  if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = previousNodeEnv;
+});
