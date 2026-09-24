@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { appendAITelemetry, clearAITelemetry, getAITelemetryEntries, isAITelemetryEnabled, recordAITelemetry } from '../src/services/ai/AITelemetry';
+import { appendAITelemetry, clearAITelemetry, exportAITelemetryJSON, getAITelemetryEntries, isAITelemetryEnabled, recordAITelemetry } from '../src/services/ai/AITelemetry';
 
 test('enables AI telemetry only when the development flag is explicitly true', () => {
   const previousFlag = process.env.VITE_AI_TELEMETRY;
@@ -70,4 +70,20 @@ test('records normalized provider usage only while telemetry is enabled', () => 
   else process.env.VITE_AI_TELEMETRY = previousFlag;
   if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = previousNodeEnv;
+});
+
+test('exports the current telemetry buffer as formatted JSON', () => {
+  clearAITelemetry();
+  appendAITelemetry({
+    timestamp: '2026-01-01T00:00:00.000Z',
+    operation: 'problem-parsing',
+    provider: 'gemini',
+    model: 'test-model',
+    latencyMs: 10,
+    payload: { staticCharacters: 40, variableCharacters: 10, totalCharacters: 50 },
+    outcome: 'success'
+  });
+  assert.deepEqual(JSON.parse(exportAITelemetryJSON()), getAITelemetryEntries());
+  assert.match(exportAITelemetryJSON(), /\n  \{/);
+  clearAITelemetry();
 });

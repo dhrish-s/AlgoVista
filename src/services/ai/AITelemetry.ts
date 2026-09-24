@@ -73,6 +73,8 @@ export const getAITelemetryEntries = (): AITelemetryEntry[] => entries.map((entr
   payload: { ...entry.payload }
 }));
 
+export const exportAITelemetryJSON = (): string => JSON.stringify(getAITelemetryEntries(), null, 2);
+
 export const clearAITelemetry = (): void => {
   entries.length = 0;
 };
