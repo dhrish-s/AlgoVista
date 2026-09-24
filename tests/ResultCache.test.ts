@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { clearAITelemetry, getAICacheTelemetryEntries } from '../src/services/ai/AITelemetry';
 import { MemoryResultCacheStorage } from '../src/services/cache/MemoryResultCacheStorage';
 import { ResultCache } from '../src/services/cache/ResultCache';
 import { RESULT_CACHE_VERSIONS } from '../src/services/cache/cacheVersions';
@@ -176,4 +177,42 @@ test('enforces a configured byte cap with LRU eviction', async () => {
   await cache.settlePendingWrites();
 
   assert.deepEqual((await cache.listEntries()).map((value) => value.fullKey), ['trace:new']);
+});
+
+test('records cache hit provenance and explicit miss reasons', async () => {
+  const previousFlag = process.env.VITE_AI_TELEMETRY;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.VITE_AI_TELEMETRY = 'true';
+  process.env.NODE_ENV = 'development';
+  clearAITelemetry();
+
+  try {
+    const storage = new MemoryResultCacheStorage();
+    await storage.setMetadata({ id: 'versions', versions: RESULT_CACHE_VERSIONS });
+    await storage.put(entry());
+    const cache = new ResultCache(storage);
+
+    await cache.lookup(entry());
+    await cache.lookup({
+      fullKey: 'parse:missing', compatibleKey: 'parse:missing-compatible', lineageKey: 'parse:missing-lineage'
+    });
+    await cache.lookup({
+      fullKey: 'solution:bypass', compatibleKey: 'solution:bypass-compatible', lineageKey: 'solution:bypass-lineage'
+    }, true);
+
+    assert.deepEqual(getAICacheTelemetryEntries().map(({ timestamp: _timestamp, ...record }) => record), [
+      {
+        layer: 'trace', result: 'hit', matchType: 'exact-provider', bytesServed: 20,
+        producerProvider: 'claude', producerModel: 'claude-sonnet-5'
+      },
+      { layer: 'parse', result: 'miss', missReason: 'absent', bytesServed: 0 },
+      { layer: 'solution', result: 'miss', missReason: 'explicit-bypass', bytesServed: 0 }
+    ]);
+  } finally {
+    clearAITelemetry();
+    if (previousFlag === undefined) delete process.env.VITE_AI_TELEMETRY;
+    else process.env.VITE_AI_TELEMETRY = previousFlag;
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+  }
 });

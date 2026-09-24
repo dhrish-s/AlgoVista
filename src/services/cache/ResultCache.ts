@@ -1,7 +1,8 @@
 import { IndexedDBResultCacheStorage } from './IndexedDBResultCacheStorage';
 import { MemoryResultCacheStorage } from './MemoryResultCacheStorage';
+import { recordAICacheTelemetry } from '../ai/AITelemetry';
 import { RESULT_CACHE_VERSIONS } from './cacheVersions';
-import { ResultCacheEntry, ResultCacheIdentity, ResultCacheLookup, ResultCacheStorage, ResultCacheVersionSet } from './cacheTypes';
+import { ResultCacheEntry, ResultCacheIdentity, ResultCacheLayer, ResultCacheLookup, ResultCacheStorage, ResultCacheVersionSet } from './cacheTypes';
 
 const versionsMatch = (left: ResultCacheVersionSet, right: ResultCacheVersionSet): boolean => (
   left.contract === right.contract
@@ -12,6 +13,10 @@ const versionsMatch = (left: ResultCacheVersionSet, right: ResultCacheVersionSet
 
 const isQuotaError = (error: unknown): boolean => (
   error instanceof DOMException && error.name === 'QuotaExceededError'
+);
+
+const layerFromIdentity = (identity: ResultCacheIdentity): ResultCacheLayer => (
+  identity.fullKey.slice(0, identity.fullKey.indexOf(':')) as ResultCacheLayer
 );
 
 export const CACHE_ACCESS_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
@@ -64,11 +69,23 @@ export class ResultCache {
 
   async lookup<T>(identity: ResultCacheIdentity, bypass = false): Promise<ResultCacheLookup<T>> {
     await this.ready();
-    if (bypass) return { hit: false, missReason: 'explicit-bypass' };
+    const layer = layerFromIdentity(identity);
+    if (bypass) {
+      recordAICacheTelemetry({ layer, result: 'miss', missReason: 'explicit-bypass', bytesServed: 0 });
+      return { hit: false, missReason: 'explicit-bypass' };
+    }
 
     const exact = await this.activeStorage.get(identity.fullKey);
     if (exact) {
       const touched = this.touchEntry(exact);
+      recordAICacheTelemetry({
+        layer,
+        result: 'hit',
+        matchType: 'exact-provider',
+        bytesServed: exact.byteSize,
+        producerProvider: exact.producerProvider,
+        producerModel: exact.producerModel
+      });
       return { hit: true, entry: touched as ResultCacheEntry<T>, matchType: 'exact-provider' };
     }
 
@@ -78,6 +95,14 @@ export class ResultCache {
     ));
     if (compatible[0]) {
       const touched = this.touchEntry(compatible[0]);
+      recordAICacheTelemetry({
+        layer,
+        result: 'hit',
+        matchType: 'compatible-provider',
+        bytesServed: compatible[0].byteSize,
+        producerProvider: compatible[0].producerProvider,
+        producerModel: compatible[0].producerModel
+      });
       return {
         hit: true,
         entry: touched as ResultCacheEntry<T>,
@@ -88,9 +113,11 @@ export class ResultCache {
     const obsolete = await this.activeStorage.findLineage(identity.lineageKey);
     if (obsolete.length > 0) {
       await Promise.all(obsolete.map((entry) => this.activeStorage.delete(entry.fullKey)));
+      recordAICacheTelemetry({ layer, result: 'miss', missReason: 'version-mismatch', bytesServed: 0 });
       return { hit: false, missReason: 'version-mismatch' };
     }
 
+    recordAICacheTelemetry({ layer, result: 'miss', missReason: 'absent', bytesServed: 0 });
     return { hit: false, missReason: 'absent' };
   }
 
