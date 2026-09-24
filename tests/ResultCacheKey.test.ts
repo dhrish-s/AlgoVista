@@ -4,6 +4,8 @@ import { canonicalizeProblemInput, createResultCacheIdentity, stableSerializeKey
 import { createParseCacheIdentity, createSolutionCacheIdentity, createTraceCacheIdentity } from '../src/services/cache/cacheIdentities';
 import { ResultCacheKeyDescriptor } from '../src/services/cache/cacheTypes';
 import { measureSerializedBytes } from '../src/services/cache/cacheSizing';
+import { createResultCacheEntry } from '../src/services/cache/cacheEntries';
+import { RESULT_CACHE_VERSIONS } from '../src/services/cache/cacheVersions';
 
 test('canonicalizes only problem-input whitespace', () => {
   assert.equal(
@@ -92,4 +94,22 @@ test('measures serialized payload size in UTF-8 bytes', () => {
   const payload = { explanation: 'café' };
   assert.equal(measureSerializedBytes(payload), new TextEncoder().encode(JSON.stringify(payload)).byteLength);
   assert.ok(measureSerializedBytes(payload) > JSON.stringify(payload).length);
+});
+
+test('records producer provenance and exact serialized entry bytes', async () => {
+  const identity = await createResultCacheIdentity(descriptor);
+  const entry = createResultCacheEntry({
+    identity,
+    layer: 'trace',
+    versions: RESULT_CACHE_VERSIONS,
+    producerProvider: 'claude',
+    producerModel: 'claude-sonnet-5',
+    payload: { steps: [{ explanation: 'Compare values.' }] },
+    now: 123
+  });
+
+  assert.equal(entry.producerProvider, 'claude');
+  assert.equal(entry.producerModel, 'claude-sonnet-5');
+  assert.equal(entry.createdAt, 123);
+  assert.equal(entry.byteSize, measureSerializedBytes(entry));
 });
