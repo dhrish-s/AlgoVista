@@ -6,6 +6,9 @@ import { ApproachOption, ExecutionStep, StructuredProblem } from '../src/types';
 import { useStore } from '../src/store/useStore';
 import { getAIManager } from '../src/services/ai/AIProviderManager';
 import { AIProvider } from '../src/services/ai/types';
+import { MemoryResultCacheStorage } from '../src/services/cache/MemoryResultCacheStorage';
+import { ResultCache } from '../src/services/cache/ResultCache';
+import { setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
 import { SOLUTION_LANGUAGES } from '../src/services/ai/solutionLanguages';
 
 const problem = {
@@ -466,4 +469,44 @@ test('Sync My Code preserves manually edited Ruby without solution generation', 
   assert.equal(solutionCalls, 0);
   assert.equal(tracedCode, editedRuby);
   assert.equal(tracedLanguage, 'ruby');
+});
+
+test('reuses a validated generated solution from persistent cache', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  let solutionCalls = 0;
+  const provider = {
+    id: 'openai',
+    generateSolution: async () => {
+      solutionCalls += 1;
+      return {
+        data: {
+          code: 'function isValid(value: string): boolean {\n  return value.length > 0;\n}',
+          language: 'typescript'
+        }
+      };
+    }
+  } as unknown as AIProvider;
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test', openai: 'test-openai', claude: 'test' },
+    taskRouting: { steps: 'openai' }
+  });
+  const providers = (manager as unknown as { providers: Map<string, AIProvider> }).providers;
+  providers.clear();
+  providers.set('openai', provider);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+
+  try {
+    const fresh = await DynamicStepGenerator.generateSolution(problem, stackApproach, 'typescript');
+    await cache.settlePendingWrites();
+    const cached = await DynamicStepGenerator.generateSolution(problem, stackApproach, 'typescript');
+
+    assert.equal(solutionCalls, 1);
+    assert.equal(cached.code, fresh.code);
+    assert.equal(cached.providerMeta?.status, 'cached');
+    assert.equal(cached.providerMeta?.provider, 'openai');
+  } finally {
+    setResultCacheForTests(null);
+  }
 });
