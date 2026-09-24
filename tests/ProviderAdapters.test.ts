@@ -564,6 +564,40 @@ test('Claude exposes reported input, output, cache-read, and cache-write usage',
   }
 });
 
+test('Claude reports exact static and variable request character counts', async () => {
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  const originalFetch = globalThis.fetch;
+  let requestBody = '';
+  let observedMetrics: unknown;
+  globalThis.fetch = async (_input, init) => {
+    requestBody = String(init?.body);
+    return new Response(JSON.stringify({
+      content: [{ type: 'text', text: 'Keep reasoning.' }],
+      stop_reason: 'end_turn'
+    }), { status: 200 });
+  };
+
+  try {
+    const response = await new ClaudeProvider().coachMessage(
+      { title: 'Test', difficulty: 'Easy' } as never,
+      'What next?',
+      [{ role: 'user', content: 'I chose a stack.' }],
+      'Track openings.',
+      { onRequestMetrics: (metrics) => { observedMetrics = metrics; } }
+    );
+    const body = JSON.parse(requestBody);
+    const variableCharacters = body.messages[0].content.length;
+    assert.deepEqual(response.requestMetrics, observedMetrics);
+    assert.deepEqual(response.requestMetrics, {
+      staticCharacters: requestBody.length - variableCharacters,
+      variableCharacters,
+      totalCharacters: requestBody.length
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('OpenAI requests and returns a structured Python solution', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
   const originalFetch = globalThis.fetch;

@@ -287,6 +287,13 @@ export class ClaudeProvider implements AIProvider {
       system: system || undefined,
       messages: [{ role: 'user', content: userContent }]
     };
+    const totalCharacters = JSON.stringify(body).length;
+    const requestMetrics = {
+      staticCharacters: totalCharacters - userContent.length,
+      variableCharacters: userContent.length,
+      totalCharacters
+    };
+    options?.onRequestMetrics?.(requestMetrics);
 
     console.debug('[ClaudeProvider] request', {
       keyPresent: Boolean(apiKey),
@@ -337,7 +344,7 @@ export class ClaudeProvider implements AIProvider {
       throw new Error('Claude returned an empty response.');
     }
 
-    return { content, raw: json, usage: claudeUsage(json) };
+    return { content, raw: json, usage: claudeUsage(json), requestMetrics };
   }
 
   async parseProblem(input: string, options?: AIRequestOptions): Promise<AIResponse<StructuredProblem>> {
