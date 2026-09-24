@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { appendAITelemetry, clearAITelemetry, getAITelemetryEntries, isAITelemetryEnabled } from '../src/services/ai/AITelemetry';
+import { appendAITelemetry, clearAITelemetry, getAITelemetryEntries, isAITelemetryEnabled, recordAITelemetry } from '../src/services/ai/AITelemetry';
 
 test('enables AI telemetry only when the development flag is explicitly true', () => {
   const previousFlag = process.env.VITE_AI_TELEMETRY;
@@ -38,4 +38,36 @@ test('keeps only the latest 500 telemetry records and returns defensive copies',
   records[0].payload.staticCharacters = -1;
   assert.equal(getAITelemetryEntries()[0].payload.staticCharacters, 5);
   clearAITelemetry();
+});
+
+test('records normalized provider usage only while telemetry is enabled', () => {
+  const previousFlag = process.env.VITE_AI_TELEMETRY;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'development';
+  delete process.env.VITE_AI_TELEMETRY;
+  clearAITelemetry();
+  const entry = {
+    operation: 'step-generation' as const,
+    provider: 'claude' as const,
+    model: 'test-model',
+    usage: { inputTokens: 20, outputTokens: 30, cacheReadTokens: 4, cacheWriteTokens: 2 },
+    latencyMs: 50,
+    payload: { staticCharacters: 100, variableCharacters: 25, totalCharacters: 125 },
+    outcome: 'success' as const
+  };
+  recordAITelemetry(entry);
+  assert.equal(getAITelemetryEntries().length, 0);
+  process.env.VITE_AI_TELEMETRY = 'true';
+  recordAITelemetry(entry);
+  const recorded = getAITelemetryEntries()[0];
+  assert.equal(recorded.inputTokens, 20);
+  assert.equal(recorded.outputTokens, 30);
+  assert.equal(recorded.cacheReadTokens, 4);
+  assert.equal(recorded.cacheWriteTokens, 2);
+  assert.deepEqual(recorded.payload, entry.payload);
+  clearAITelemetry();
+  if (previousFlag === undefined) delete process.env.VITE_AI_TELEMETRY;
+  else process.env.VITE_AI_TELEMETRY = previousFlag;
+  if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = previousNodeEnv;
 });

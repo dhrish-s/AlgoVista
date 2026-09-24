@@ -1,4 +1,4 @@
-import { AIProviderID, AIRequestOperation, AIRequestPayloadMetrics } from './types';
+import { AIProviderID, AIRequestOperation, AIRequestPayloadMetrics, AIUsage } from './types';
 
 export type AITelemetryOutcome = 'success' | 'fallback' | 'rejected' | 'timeout' | 'failed' | 'cancelled';
 
@@ -39,6 +39,33 @@ export const appendAITelemetry = (entry: AITelemetryEntry): void => {
   if (entries.length > TELEMETRY_CAPACITY) {
     entries.splice(0, entries.length - TELEMETRY_CAPACITY);
   }
+};
+
+export const recordAITelemetry = (entry: {
+  operation: AIRequestOperation;
+  provider: AIProviderID;
+  model: string;
+  usage?: AIUsage;
+  latencyMs: number;
+  payload?: AIRequestPayloadMetrics;
+  outcome: AITelemetryOutcome;
+  message?: string;
+}): void => {
+  if (!isAITelemetryEnabled()) return;
+  appendAITelemetry({
+    timestamp: new Date().toISOString(),
+    operation: entry.operation,
+    provider: entry.provider,
+    model: entry.model,
+    inputTokens: entry.usage?.inputTokens,
+    outputTokens: entry.usage?.outputTokens,
+    cacheReadTokens: entry.usage?.cacheReadTokens,
+    cacheWriteTokens: entry.usage?.cacheWriteTokens,
+    latencyMs: entry.latencyMs,
+    payload: entry.payload || { staticCharacters: 0, variableCharacters: 0, totalCharacters: 0 },
+    outcome: entry.outcome,
+    message: entry.message
+  });
 };
 
 export const getAITelemetryEntries = (): AITelemetryEntry[] => entries.map((entry) => ({
