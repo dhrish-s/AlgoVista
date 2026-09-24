@@ -3,6 +3,7 @@ import test from 'node:test';
 import { AIProviderManager } from '../src/services/ai/AIProviderManager';
 import { ClaudeProvider, OpenAIProvider } from '../src/services/ai/providers/AlternativeProviders';
 import { GeminiProvider } from '../src/services/ai/providers/GeminiProvider';
+import { SOLUTION_LANGUAGE_METADATA } from '../src/services/ai/solutionLanguages';
 
 type PrivateOpenAIProvider = {
   requestText(messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>): Promise<unknown>;
@@ -1058,6 +1059,36 @@ test('Gemini reports exact code explanation request character counts', async () 
   const response = await provider.explainCode({ title } as never, code);
   const totalCharacters = JSON.stringify(request).length;
   const variableCharacters = title.length + code.length;
+
+  assert.deepEqual(response.requestMetrics, {
+    staticCharacters: totalCharacters - variableCharacters,
+    variableCharacters,
+    totalCharacters
+  });
+});
+
+test('Gemini reports exact step-generation request character counts', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, unknown> | undefined;
+  (provider as any).ai = { models: { generateContent: async (value: Record<string, unknown>) => {
+    request = value;
+    return { text: '[]' };
+  } } };
+
+  const title = 'Valid Parentheses';
+  const code = 'function isValid() {}';
+  const input = { s: '()' };
+  const response = await provider.generateSteps(
+    { title } as never,
+    code,
+    { input },
+    { sourceLineCount: 1, solutionLanguage: 'typescript' }
+  );
+  const totalCharacters = JSON.stringify(request).length;
+  const variableCharacters = title.length
+    + JSON.stringify(input).length
+    + code.length
+    + SOLUTION_LANGUAGE_METADATA.typescript.label.length;
 
   assert.deepEqual(response.requestMetrics, {
     staticCharacters: totalCharacters - variableCharacters,

@@ -237,7 +237,7 @@ export class GeminiProvider implements AIProvider {
          Return a JSON array of step objects only. Do not generate fake or placeholder steps.
         `;
 
-    const response = await this.ai.models.generateContent({
+    const request = {
       model: options?.model || getDefaultModelNames().gemini,
       contents: prompt,
       config: {
@@ -477,9 +477,15 @@ export class GeminiProvider implements AIProvider {
           }
         }
       }
-    });
+    };
+    const variableCharacters = problem.title.length
+      + JSON.stringify(testCase.input).length
+      + code.length
+      + (isUserCode ? sourceLanguage.length : 0);
+    const requestMetrics = measureGeminiRequest(request, variableCharacters, options);
+    const response = await this.ai.models.generateContent(request);
 
-    return { data: JSON.parse(response.text || '[]'), raw: response, usage: geminiUsage(response) };
+    return { data: JSON.parse(response.text || '[]'), raw: response, usage: geminiUsage(response), requestMetrics };
   }
 
   async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
