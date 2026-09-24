@@ -24,7 +24,7 @@ interface AppState {
   stepGenerationError: string | null;
   stepTruncated: boolean;
   currentProvider: string;
-  providerStatus: 'success' | 'failed' | 'fallback' | 'unavailable' | 'idle';
+  providerStatus: 'success' | 'failed' | 'fallback' | 'unavailable' | 'cached' | 'idle';
   providerMessage: string | null;
   
   userCode: string;

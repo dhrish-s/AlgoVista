@@ -58,7 +58,7 @@ export interface AIResponse<T> {
   meta?: {
     provider: AIProviderID;
     model?: string;
-    status: 'success' | 'failed' | 'fallback' | 'unavailable';
+    status: 'success' | 'failed' | 'fallback' | 'unavailable' | 'cached';
     fallbackFrom?: AIProviderID;
     message?: string;
   };
