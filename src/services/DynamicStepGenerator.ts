@@ -282,12 +282,19 @@ export class DynamicStepGenerator {
           problem, userCode, testCase, { ...requestOptions, signal: sharedSignal }
         );
         const generatedSteps = buildGeneratedSteps(rawSteps, sourceLineCount, meta);
+        const producerTarget = {
+          provider: meta?.provider || target.provider,
+          model: meta?.model || target.model
+        };
+        const producerIdentity = await createTraceCacheIdentity(
+          problem, null, language, userCode, testCase, 'user-code', producerTarget
+        );
         cache.store(createResultCacheEntry({
-          identity,
+          identity: producerIdentity,
           layer: 'trace',
           versions: RESULT_CACHE_VERSIONS,
-          producerProvider: meta?.provider || target.provider,
-          producerModel: meta?.model || target.model,
+          producerProvider: producerTarget.provider,
+          producerModel: producerTarget.model,
           payload: [...generatedSteps]
         }));
         return generatedSteps;
