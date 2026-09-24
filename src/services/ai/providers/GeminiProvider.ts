@@ -549,13 +549,20 @@ ${historyText}
 
 New User Input: ${userMessage}`;
 
-    const response = await this.ai.models.generateContent({
+    const request = {
       model: options?.model || getDefaultModelNames().gemini,
       contents: prompt,
       config: {
         abortSignal: options?.signal
       }
-    });
+    };
+    const variableCharacters = problem.title.length
+      + (problem.difficulty?.length || 0)
+      + (userReasoning?.length || 0)
+      + chatHistory.reduce((total, message) => total + message.content.length, 0)
+      + userMessage.length;
+    const requestMetrics = measureGeminiRequest(request, variableCharacters, options);
+    const response = await this.ai.models.generateContent(request);
 
     return {
       data: {
@@ -563,7 +570,8 @@ New User Input: ${userMessage}`;
         isError: false
       },
       raw: response,
-      usage: geminiUsage(response)
+      usage: geminiUsage(response),
+      requestMetrics
     };
   }
 }

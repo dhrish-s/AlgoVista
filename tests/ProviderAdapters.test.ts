@@ -1119,6 +1119,36 @@ test('Gemini reports exact solution-generation request character counts', async 
   });
 });
 
+test('Gemini reports exact coach request character counts', async () => {
+  const provider = new GeminiProvider();
+  let request: Record<string, unknown> | undefined;
+  (provider as any).ai = { models: { generateContent: async (value: Record<string, unknown>) => {
+    request = value;
+    return { text: 'Consider what the stack represents.' };
+  } } };
+
+  const title = 'Valid Parentheses';
+  const difficulty = 'Easy';
+  const userMessage = 'What should I track?';
+  const reasoning = 'I think a stack can help.';
+  const history = [{ role: 'user' as const, content: 'I matched opening brackets.' }];
+  const response = await provider.coachMessage(
+    { title, difficulty } as never,
+    userMessage,
+    history,
+    reasoning
+  );
+  const totalCharacters = JSON.stringify(request).length;
+  const variableCharacters = title.length + difficulty.length + userMessage.length
+    + reasoning.length + history[0].content.length;
+
+  assert.deepEqual(response.requestMetrics, {
+    staticCharacters: totalCharacters - variableCharacters,
+    variableCharacters,
+    totalCharacters
+  });
+});
+
 test('Gemini solution generation uses a strict Python response schema', async () => {
   const provider = new GeminiProvider();
   let request: Record<string, any> | undefined;
