@@ -17,6 +17,21 @@ const geminiUsage = (response: any) => {
   };
 };
 
+const measureGeminiRequest = (
+  request: Record<string, unknown>,
+  variableCharacters: number,
+  options?: AIRequestOptions
+) => {
+  const totalCharacters = JSON.stringify(request).length;
+  const metrics = {
+    staticCharacters: Math.max(0, totalCharacters - variableCharacters),
+    variableCharacters,
+    totalCharacters
+  };
+  options?.onRequestMetrics?.(metrics);
+  return metrics;
+};
+
 export class GeminiProvider implements AIProvider {
   id: AIProviderID = 'gemini';
   private ai: GoogleGenAI;
