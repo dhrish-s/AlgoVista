@@ -4,6 +4,10 @@ import { ProblemLoaderService } from '../src/services/ProblemLoaderService';
 import { validateParsedProblem } from '../src/services/ParsedProblemValidator';
 import { getAIManager } from '../src/services/ai/AIProviderManager';
 import { AIProvider, AIProviderID } from '../src/services/ai/types';
+import { MemoryResultCacheStorage } from '../src/services/cache/MemoryResultCacheStorage';
+import { ResultCache } from '../src/services/cache/ResultCache';
+import { setResultCacheForTests } from '../src/services/cache/resultCacheInstance';
+import { StructuredProblem } from '../src/types';
 
 test('preserves the exact source input on a parsed problem', async () => {
   process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
@@ -62,4 +66,43 @@ test('validates parsed problems through a reusable confidence boundary', () => {
     () => validateParsedProblem({ ...valid, parsingConfidence: 0.2 }),
     /Low confidence parsing result/
   );
+});
+
+test('reuses a validated parsed problem from the persistent cache', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test-gemini', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: { parse: 'openai' }
+  });
+  let calls = 0;
+  const provider = {
+    id: 'openai',
+    parseProblem: async () => {
+      calls += 1;
+      return {
+        data: {
+          id: 'two-sum', source: 'pasted-text', title: 'Two Sum',
+          statement: 'Find two array values that add to the requested target value.',
+          examples: [{ input: 'nums = [2,7], target = 9', output: '[0,1]' }],
+          constraints: ['Exactly one answer exists.'], approaches: [], inferredPatterns: [], parsingConfidence: 1
+        }
+      };
+    }
+  } as unknown as AIProvider;
+  (manager as unknown as { providers: Map<AIProviderID, AIProvider> }).providers.set('openai', provider);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+
+  try {
+    await ProblemLoaderService.parseProblemText('Two Sum');
+    await cache.settlePendingWrites();
+    const cached = await ProblemLoaderService.parseProblemText('  Two   Sum  ');
+
+    assert.equal(calls, 1);
+    assert.equal(cached.sourceInput, '  Two   Sum  ');
+    assert.equal((cached as StructuredProblem & { __providerMeta?: { status?: string } }).__providerMeta?.status, 'cached');
+  } finally {
+    setResultCacheForTests(null);
+  }
 });
