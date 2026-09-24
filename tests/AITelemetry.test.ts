@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { appendAITelemetry, clearAITelemetry, exportAITelemetryJSON, getAITelemetryEntries, isAITelemetryEnabled, recordAITelemetry } from '../src/services/ai/AITelemetry';
+import { AIProviderManager } from '../src/services/ai/AIProviderManager';
+import { AIProvider, AIProviderID, AIProviderSettings } from '../src/services/ai/types';
 
 test('enables AI telemetry only when the development flag is explicitly true', () => {
   const previousFlag = process.env.VITE_AI_TELEMETRY;
@@ -86,4 +88,59 @@ test('exports the current telemetry buffer as formatted JSON', () => {
   assert.deepEqual(JSON.parse(exportAITelemetryJSON()), getAITelemetryEntries());
   assert.match(exportAITelemetryJSON(), /\n  \{/);
   clearAITelemetry();
+});
+
+test('records rejected provider attempts and the fallback that succeeds', async () => {
+  const previousFlag = process.env.VITE_AI_TELEMETRY;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.VITE_AI_TELEMETRY = 'true';
+  process.env.NODE_ENV = 'development';
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  process.env.VITE_CLAUDE_API_KEY = 'test-claude-key';
+  clearAITelemetry();
+
+  const settings: AIProviderSettings = {
+    defaultProvider: 'openai',
+    fallbackProvider: 'claude',
+    modelNames: { gemini: 'test-gemini', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: { steps: 'openai' }
+  };
+  const rejectedMetrics = { staticCharacters: 100, variableCharacters: 20, totalCharacters: 120 };
+  const primary = {
+    id: 'openai',
+    generateSteps: async () => ({
+      data: [],
+      usage: { inputTokens: 10, outputTokens: 5 },
+      requestMetrics: rejectedMetrics
+    })
+  } as unknown as AIProvider;
+  const fallback = {
+    id: 'claude',
+    generateSteps: async () => ({
+      data: [{
+        id: 'done', line: 1, explanation: 'Return.', operationType: 'return',
+        variables: {}, visualState: { array: [] }
+      }],
+      usage: { inputTokens: 12, outputTokens: 8 },
+      requestMetrics: { staticCharacters: 100, variableCharacters: 20, totalCharacters: 120 }
+    })
+  } as unknown as AIProvider;
+  const manager = new AIProviderManager(settings);
+  const providers = (manager as unknown as { providers: Map<AIProviderID, AIProvider> }).providers;
+  providers.set('openai', primary);
+  providers.set('claude', fallback);
+
+  await manager.generateSteps({}, '', {});
+
+  const records = getAITelemetryEntries();
+  assert.equal(records.length, 3);
+  assert.deepEqual(records.map((record) => record.outcome), ['rejected', 'rejected', 'fallback']);
+  assert.equal(records[0].inputTokens, 10);
+  assert.deepEqual(records[0].payload, rejectedMetrics);
+  assert.equal(records[2].provider, 'claude');
+  clearAITelemetry();
+  if (previousFlag === undefined) delete process.env.VITE_AI_TELEMETRY;
+  else process.env.VITE_AI_TELEMETRY = previousFlag;
+  if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = previousNodeEnv;
 });

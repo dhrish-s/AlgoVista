@@ -5,6 +5,8 @@ import { getDefaultFallbackProvider, getDefaultModelNames, getDefaultProvider, g
 import { validateExecutionSteps } from '../ExecutionStepValidator';
 import { validateGeneratedSolution } from '../GeneratedSolutionValidator';
 import { DEFAULT_SOLUTION_LANGUAGE } from './solutionLanguages';
+import { recordAITelemetry } from './AITelemetry';
+import { AIRequestPayloadMetrics, AIUsage } from './types';
 
 export const AI_OPERATION_TIMEOUT_MS: Record<AIRequestOperation, number> = {
   'problem-parsing': 45_000,
@@ -102,7 +104,9 @@ export class AIProviderManager {
       const response = await provider.generateSolution(problem, approach, providerOptions);
       const validation = validateGeneratedSolution(response.data, solutionLanguage);
       if ('error' in validation) {
-        throw new Error(`Invalid generated solution: ${validation.error}`);
+        const error: any = new Error(`Invalid generated solution: ${validation.error}`);
+        error.aiResponse = response;
+        throw error;
       }
       return { ...response, data: validation.solution };
     }, { ...options, operation: 'solution-generation' });
@@ -113,7 +117,9 @@ export class AIProviderManager {
       const response = await provider.generateSteps(problem, code, testCase, providerOptions);
       const validation = validateExecutionSteps(response.data, { sourceLineCount: options?.sourceLineCount });
       if (!validation.valid) {
-        throw new Error(`Invalid step trace: ${validation.error}`);
+        const error: any = new Error(`Invalid step trace: ${validation.error}`);
+        error.aiResponse = response;
+        throw error;
       }
       return response;
     }, { ...options, operation: 'step-generation' });
@@ -150,10 +156,16 @@ export class AIProviderManager {
 
       for (let attempt = 0; attempt <= retries; attempt++) {
         lastAttemptedProviderId = providerId;
+        const startedAt = performance.now();
+        let requestMetrics: AIRequestPayloadMetrics | undefined;
         try {
           const providerOptions: AIRequestOptions = {
             ...options,
-            model: options?.model || this.settings.modelNames[provider.id]
+            model: options?.model || this.settings.modelNames[provider.id],
+            onRequestMetrics: (metrics) => {
+              requestMetrics = metrics;
+              options?.onRequestMetrics?.(metrics);
+            }
           };
           const response = await this.executeProviderAttempt(
             task,
@@ -164,7 +176,7 @@ export class AIProviderManager {
               options?.timeoutMs ?? AI_OPERATION_TIMEOUT_MS[options?.operation || 'small-helper']
             )
           );
-          return {
+          const normalizedResponse: AIResponse<T> = {
             ...response,
             meta: {
               ...response.meta,
@@ -176,7 +188,35 @@ export class AIProviderManager {
                 : `${primaryId} was unavailable or failed, so ${provider.id} handled the request.`
             }
           };
+          recordAITelemetry({
+            operation: options?.operation || 'small-helper',
+            provider: provider.id,
+            model: providerOptions.model || '',
+            usage: response.usage,
+            latencyMs: Math.round(performance.now() - startedAt),
+            payload: response.requestMetrics || requestMetrics,
+            outcome: provider.id === primaryId ? 'success' : 'fallback'
+          });
+          return normalizedResponse;
         } catch (error: any) {
+          const response = error.aiResponse as { usage?: AIUsage; requestMetrics?: AIRequestPayloadMetrics } | undefined;
+          const outcome = options?.signal?.aborted || error.name === 'AbortError'
+            ? 'cancelled'
+            : error.name === 'TimeoutError'
+              ? 'timeout'
+              : String(error.message || '').startsWith('Invalid ')
+                ? 'rejected'
+                : 'failed';
+          recordAITelemetry({
+            operation: options?.operation || 'small-helper',
+            provider: provider.id,
+            model: options?.model || this.settings.modelNames[provider.id] || '',
+            usage: response?.usage,
+            latencyMs: Math.round(performance.now() - startedAt),
+            payload: response?.requestMetrics || requestMetrics,
+            outcome,
+            message: error.message
+          });
           if (options?.signal?.aborted || error.name === 'AbortError') {
             const cancelError: any = new Error('Request was cancelled');
             cancelError.name = 'AbortError';
