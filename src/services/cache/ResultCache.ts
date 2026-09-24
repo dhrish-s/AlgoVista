@@ -13,6 +13,7 @@ const versionsMatch = (left: ResultCacheVersionSet, right: ResultCacheVersionSet
 export class ResultCache {
   private activeStorage: ResultCacheStorage;
   private readonly initialization: Promise<void>;
+  private readonly pendingWrites = new Set<Promise<void>>();
 
   constructor(
     primaryStorage: ResultCacheStorage = new IndexedDBResultCacheStorage(),
@@ -74,6 +75,22 @@ export class ResultCache {
     }
 
     return { hit: false, missReason: 'absent' };
+  }
+
+  store(entry: ResultCacheEntry): void {
+    this.trackWrite(this.ready().then(() => this.activeStorage.put(entry)));
+  }
+
+  private trackWrite(write: Promise<void>): void {
+    const tracked = write.finally(() => this.pendingWrites.delete(tracked));
+    this.pendingWrites.add(tracked);
+    void tracked.catch(() => undefined);
+  }
+
+  async settlePendingWrites(): Promise<void> {
+    const results = await Promise.allSettled([...this.pendingWrites]);
+    const failure = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+    if (failure) throw failure.reason;
   }
 
   async clear(): Promise<void> {

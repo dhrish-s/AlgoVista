@@ -88,3 +88,23 @@ test('evicts obsolete lineage entries when versions no longer match', async () =
   assert.deepEqual(result, { hit: false, missReason: 'version-mismatch' });
   assert.deepEqual(await cache.listEntries(), []);
 });
+
+test('keeps cache writes off the caller critical path and exposes settlement', async () => {
+  let releaseWrite: (() => void) | undefined;
+  class DelayedStorage extends MemoryResultCacheStorage {
+    override async put(value: ResultCacheEntry): Promise<void> {
+      await new Promise<void>((resolve) => { releaseWrite = resolve; });
+      await super.put(value);
+    }
+  }
+  const storage = new DelayedStorage();
+  const cache = new ResultCache(storage);
+  await cache.ready();
+
+  cache.store(entry());
+  assert.deepEqual(await cache.listEntries(), []);
+  releaseWrite?.();
+  await cache.settlePendingWrites();
+
+  assert.equal((await cache.listEntries()).length, 1);
+});
