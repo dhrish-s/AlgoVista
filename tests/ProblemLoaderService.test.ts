@@ -106,3 +106,48 @@ test('reuses a validated parsed problem from the persistent cache', async () => 
     setResultCacheForTests(null);
   }
 });
+
+test('deduplicates concurrent parsing while keeping stale consumers isolated', async () => {
+  process.env.VITE_OPENAI_API_KEY = 'test-openai-key';
+  const manager = getAIManager({
+    defaultProvider: 'openai', fallbackProvider: 'openai',
+    modelNames: { gemini: 'test-gemini', openai: 'test-openai', claude: 'test-claude' },
+    taskRouting: { parse: 'openai' }
+  });
+  let calls = 0;
+  let release: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const provider = {
+    id: 'openai',
+    parseProblem: async () => {
+      calls += 1;
+      await gate;
+      return {
+        data: {
+          id: 'two-sum', source: 'pasted-text', title: 'Two Sum',
+          statement: 'Find two array values that add to the requested target value.',
+          examples: [{ input: 'nums = [2,7], target = 9', output: '[0,1]' }],
+          constraints: [], approaches: [], inferredPatterns: [], parsingConfidence: 1
+        }
+      };
+    }
+  } as unknown as AIProvider;
+  (manager as unknown as { providers: Map<AIProviderID, AIProvider> }).providers.set('openai', provider);
+  const cache = new ResultCache(new MemoryResultCacheStorage());
+  setResultCacheForTests(cache);
+
+  try {
+    const first = ProblemLoaderService.parseProblemText('Two Sum');
+    const second = ProblemLoaderService.parseProblemText('  Two   Sum  ');
+    await Promise.resolve();
+    release?.();
+    const [firstResult, secondResult] = await Promise.allSettled([first, second]);
+
+    assert.equal(calls, 1);
+    assert.equal(firstResult.status, 'rejected');
+    assert.equal((firstResult as PromiseRejectedResult).reason.name, 'AbortError');
+    assert.equal(secondResult.status, 'fulfilled');
+  } finally {
+    setResultCacheForTests(null);
+  }
+});

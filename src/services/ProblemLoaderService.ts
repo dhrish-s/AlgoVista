@@ -5,9 +5,21 @@ import { createResultCacheEntry } from './cache/cacheEntries';
 import { createParseCacheIdentity } from './cache/cacheIdentities';
 import { RESULT_CACHE_VERSIONS } from './cache/cacheVersions';
 import { getResultCache } from './cache/resultCacheInstance';
+import { InFlightRequestDeduplicator } from './cache/InFlightRequestDeduplicator';
+
+interface GeneratedParseResult {
+  problem: StructuredProblem;
+  providerMeta?: {
+    provider: string;
+    model?: string;
+    status: string;
+    message?: string;
+  };
+}
 
 export class ProblemLoaderService {
   private static latestParseRequest = 0;
+  private static readonly inFlightParses = new InFlightRequestDeduplicator<GeneratedParseResult>();
   static detectSource(input: string): ProblemSource {
     const trimmed = input.trim();
     if (trimmed.startsWith('http') && trimmed.includes('leetcode.com')) {
@@ -78,24 +90,31 @@ export class ProblemLoaderService {
       } as StructuredProblem;
     }
 
-    const { data, meta } = await aiManager.parseProblem(text, requestOptions);
-    const confidence = validateParsedProblem(data);
-    const parsedProblem = {
-      ...data,
-      sourceInput: text,
-      slug: metadata?.slug,
-      source,
-      parsingConfidence: confidence
-    } as StructuredProblem;
+    const generated = await ProblemLoaderService.inFlightParses.run(
+      identity.fullKey,
+      signal,
+      async (sharedSignal) => {
+        const { data, meta } = await aiManager.parseProblem(text, { ...requestOptions, signal: sharedSignal });
+        const confidence = validateParsedProblem(data);
+        const parsedProblem = {
+          ...data,
+          sourceInput: text,
+          slug: metadata?.slug,
+          source,
+          parsingConfidence: confidence
+        } as StructuredProblem;
 
-    cache.store(createResultCacheEntry({
-      identity,
-      layer: 'parse',
-      versions: RESULT_CACHE_VERSIONS,
-      producerProvider: meta?.provider || target.provider,
-      producerModel: meta?.model || target.model,
-      payload: parsedProblem
-    }));
+        cache.store(createResultCacheEntry({
+          identity,
+          layer: 'parse',
+          versions: RESULT_CACHE_VERSIONS,
+          producerProvider: meta?.provider || target.provider,
+          producerModel: meta?.model || target.model,
+          payload: parsedProblem
+        }));
+        return { problem: parsedProblem, providerMeta: meta };
+      }
+    );
 
     // If another parse started after this one, treat this result as stale.
     if (reqId !== ProblemLoaderService.latestParseRequest) {
@@ -104,6 +123,12 @@ export class ProblemLoaderService {
       throw err;
     }
 
-    return { ...parsedProblem, __providerMeta: meta } as StructuredProblem & { __providerMeta?: typeof meta };
+    return {
+      ...generated.problem,
+      sourceInput: text,
+      slug: metadata?.slug,
+      source,
+      __providerMeta: generated.providerMeta
+    } as StructuredProblem;
   }
 }
