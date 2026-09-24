@@ -227,3 +227,19 @@ test('keeps the cache service independent from session state', () => {
 
   setResultCacheForTests(null);
 });
+
+test('evicts a cached payload that fails current validation', async () => {
+  const storage = new MemoryResultCacheStorage();
+  await storage.setMetadata({ id: 'versions', versions: RESULT_CACHE_VERSIONS });
+  const invalidEntry = entry({ payload: { steps: [] } });
+  await storage.put(invalidEntry);
+  const cache = new ResultCache(storage);
+
+  const result = await cache.lookup(invalidEntry, false, (payload) => (
+    Array.isArray((payload as { steps?: unknown }).steps)
+    && (payload as { steps: unknown[] }).steps.length > 0
+  ));
+
+  assert.deepEqual(result, { hit: false, missReason: 'failed-validation' });
+  assert.deepEqual(await cache.listEntries(), []);
+});

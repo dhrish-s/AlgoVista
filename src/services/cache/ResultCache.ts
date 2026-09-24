@@ -67,7 +67,11 @@ export class ResultCache {
     return this.activeStorage.list();
   }
 
-  async lookup<T>(identity: ResultCacheIdentity, bypass = false): Promise<ResultCacheLookup<T>> {
+  async lookup<T>(
+    identity: ResultCacheIdentity,
+    bypass = false,
+    validate?: (payload: unknown) => boolean
+  ): Promise<ResultCacheLookup<T>> {
     await this.ready();
     const layer = layerFromIdentity(identity);
     if (bypass) {
@@ -77,6 +81,11 @@ export class ResultCache {
 
     const exact = await this.activeStorage.get(identity.fullKey);
     if (exact) {
+      if (!this.isPayloadValid(exact.payload, validate)) {
+        await this.activeStorage.delete(exact.fullKey);
+        recordAICacheTelemetry({ layer, result: 'miss', missReason: 'failed-validation', bytesServed: 0 });
+        return { hit: false, missReason: 'failed-validation' };
+      }
       const touched = this.touchEntry(exact);
       recordAICacheTelemetry({
         layer,
@@ -94,6 +103,11 @@ export class ResultCache {
       right.createdAt - left.createdAt || left.fullKey.localeCompare(right.fullKey)
     ));
     if (compatible[0]) {
+      if (!this.isPayloadValid(compatible[0].payload, validate)) {
+        await this.activeStorage.delete(compatible[0].fullKey);
+        recordAICacheTelemetry({ layer, result: 'miss', missReason: 'failed-validation', bytesServed: 0 });
+        return { hit: false, missReason: 'failed-validation' };
+      }
       const touched = this.touchEntry(compatible[0]);
       recordAICacheTelemetry({
         layer,
@@ -123,6 +137,15 @@ export class ResultCache {
 
   store(entry: ResultCacheEntry): void {
     this.trackWrite(this.ready().then(() => this.writeWithQuotaRecovery(entry)));
+  }
+
+  private isPayloadValid(payload: unknown, validate?: (payload: unknown) => boolean): boolean {
+    if (!validate) return true;
+    try {
+      return validate(payload);
+    } catch {
+      return false;
+    }
   }
 
   private async writeWithQuotaRecovery(entry: ResultCacheEntry): Promise<void> {
