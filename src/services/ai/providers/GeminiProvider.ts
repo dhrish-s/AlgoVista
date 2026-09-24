@@ -87,7 +87,8 @@ export class GeminiProvider implements AIProvider {
         parsingConfidence: typeof data.parsingConfidence === 'number' ? data.parsingConfidence : 1,
         requiresUserConfirmation: Boolean(data.requiresUserConfirmation),
         inferredPatterns: []
-      })
+      }),
+      raw: response
     };
   }
 
@@ -110,7 +111,7 @@ export class GeminiProvider implements AIProvider {
       }
     });
 
-    return { data: JSON.parse(response.text || '{}') };
+    return { data: JSON.parse(response.text || '{}'), raw: response };
   }
 
   async generateHints(problem: StructuredProblem, userCode: string, options?: AIRequestOptions): Promise<AIResponse<HintGeneration>> {
@@ -130,7 +131,7 @@ export class GeminiProvider implements AIProvider {
       }
     });
 
-    return { data: JSON.parse(response.text || '{}') };
+    return { data: JSON.parse(response.text || '{}'), raw: response };
   }
 
   async explainCode(problem: StructuredProblem, code: string, options?: AIRequestOptions): Promise<AIResponse<CodeExplanation>> {
@@ -155,7 +156,7 @@ export class GeminiProvider implements AIProvider {
       throw new Error('AbortError');
     }
 
-    return { data: JSON.parse(response.text || '{}') };
+    return { data: JSON.parse(response.text || '{}'), raw: response };
   }
 
   async generateSteps(problem: StructuredProblem, code: string, testCase: any, options?: AIRequestOptions): Promise<AIResponse<ExecutionStep[]>> {
@@ -442,7 +443,7 @@ export class GeminiProvider implements AIProvider {
       }
     });
 
-    return { data: JSON.parse(response.text || '[]') };
+    return { data: JSON.parse(response.text || '[]'), raw: response };
   }
 
   async generateSolution(problem: StructuredProblem, approach: ApproachOption, options?: AIRequestOptions): Promise<AIResponse<GeneratedSolution>> {
@@ -515,7 +516,8 @@ New User Input: ${userMessage}`;
       data: {
         content: response.text || "I'm having trouble thinking today. Try again?",
         isError: false
-      }
+      },
+      raw: response
     };
   }
 }

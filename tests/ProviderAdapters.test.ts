@@ -875,6 +875,18 @@ test('Gemini solution generation uses a strict TypeScript response schema', asyn
   assert.deepEqual(request?.config?.responseSchema?.properties?.language?.enum, ['typescript']);
 });
 
+test('Gemini retains raw SDK responses outside solution generation', async () => {
+  const provider = new GeminiProvider();
+  const rawResponse = { text: JSON.stringify({
+    title: 'Test', statement: 'Test statement', examples: [], constraints: [], approaches: []
+  }), usageMetadata: { promptTokenCount: 10 } };
+  (provider as any).ai = { models: { generateContent: async () => rawResponse } };
+
+  const response = await provider.parseProblem('Test');
+
+  assert.equal(response.raw, rawResponse);
+});
+
 test('Gemini solution generation uses a strict Python response schema', async () => {
   const provider = new GeminiProvider();
   let request: Record<string, any> | undefined;
