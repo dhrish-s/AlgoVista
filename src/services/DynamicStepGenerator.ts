@@ -28,6 +28,30 @@ export interface GeneratedIdealSolution {
   providerMeta?: GeneratedExecutionSteps['providerMeta'];
 }
 
+const buildGeneratedSteps = (
+  rawSteps: unknown,
+  sourceLineCount: number,
+  providerMeta?: GeneratedExecutionSteps['providerMeta']
+): GeneratedExecutionSteps => {
+  const validation = validateExecutionSteps(rawSteps, { sourceLineCount });
+  if (!validation.valid) {
+    throw new Error(`Invalid step trace: ${validation.error}`);
+  }
+
+  if (validation.isTruncated) {
+    console.warn(`Step trace truncated: ${validation.error}`);
+  }
+
+  const steps = validation.steps as GeneratedExecutionSteps;
+  steps.generationFeedback = {
+    truncated: validation.isTruncated,
+    rejectedStepCount: validation.rejectedStepCount,
+    message: [validation.error, validation.warning].filter(Boolean).join(' ') || undefined
+  };
+  steps.providerMeta = providerMeta;
+  return steps;
+};
+
 export class DynamicStepGenerator {
   private static latestRequestMap: Record<string, number> = {};
 
@@ -127,24 +151,7 @@ export class DynamicStepGenerator {
       throw err;
     }
 
-    // Validate and sanitize returned steps
-    const validation = validateExecutionSteps(rawSteps, { sourceLineCount });
-    if (!validation.valid) {
-      throw new Error(`Invalid step trace: ${validation.error}`);
-    }
-
-    if (validation.isTruncated) {
-      console.warn(`Step trace truncated: ${validation.error}`);
-    }
-
-    const steps = validation.steps as GeneratedExecutionSteps;
-    steps.generationFeedback = {
-      truncated: validation.isTruncated,
-      rejectedStepCount: validation.rejectedStepCount,
-      message: [validation.error, validation.warning].filter(Boolean).join(' ') || undefined
-    };
-    steps.providerMeta = meta;
-    return steps;
+    return buildGeneratedSteps(rawSteps, sourceLineCount, meta);
   }
 
   static async generateFromUserCode(
@@ -181,23 +188,6 @@ export class DynamicStepGenerator {
       throw err;
     }
 
-    // Validate and sanitize returned steps
-    const validation = validateExecutionSteps(rawSteps, { sourceLineCount });
-    if (!validation.valid) {
-      throw new Error(`Invalid step trace: ${validation.error}`);
-    }
-
-    if (validation.isTruncated) {
-      console.warn(`Step trace truncated: ${validation.error}`);
-    }
-
-    const steps = validation.steps as GeneratedExecutionSteps;
-    steps.generationFeedback = {
-      truncated: validation.isTruncated,
-      rejectedStepCount: validation.rejectedStepCount,
-      message: [validation.error, validation.warning].filter(Boolean).join(' ') || undefined
-    };
-    steps.providerMeta = meta;
-    return steps;
+    return buildGeneratedSteps(rawSteps, sourceLineCount, meta);
   }
 }
