@@ -1,8 +1,35 @@
-# AlgoVista
+<h1 align="center">AlgoVista</h1>
 
-AlgoVista is an AI-assisted workspace for learning algorithms through structured reasoning, code, and execution visualization. It supports LeetCode-style problem input, AI-assisted problem parsing, guided approach selection, a Monaco editor, step-by-step playback, and variable inspection.
+<p align="center">
+  <strong>Learn algorithms by seeing the reasoning, code, and state change together.</strong>
+</p>
 
-The workspace is designed to make the reasoning process visible. Users explain an approach before the editor unlocks, then compare that reasoning with an executable trace and a matching data-structure visualization.
+<p align="center">
+  An AI-assisted workspace that turns algorithm problems into guided, visual learning sessions.
+</p>
+
+<p align="center">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white" />
+  <img alt="TypeScript 5.8" src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white" />
+  <img alt="Vite 6" src="https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white" />
+  <img alt="Tests passing" src="https://img.shields.io/badge/tests-195%20passing-22C55E?style=flat-square" />
+</p>
+
+<p align="center">
+  <a href="#learning-workflow">Workflow</a> ·
+  <a href="#main-features">Features</a> ·
+  <a href="#see-algovista-in-action">Screenshots</a> ·
+  <a href="#installation">Installation</a> ·
+  <a href="#ai-provider-behavior">AI providers</a>
+</p>
+
+<p align="center">
+  <img src="docs/images/algovista-start.png" alt="AlgoVista learning dashboard" width="100%" />
+</p>
+
+AlgoVista makes the invisible parts of solving an algorithm problem easier to understand. It brings problem parsing, approach selection, guided reasoning, code, execution traces, and structure-aware visualization into one focused workspace.
+
+The experience is reasoning-first. You explain an approach before the editor unlocks, then compare that thinking with an executable trace and a matching data-structure visualization.
 
 ## Learning workflow
 
