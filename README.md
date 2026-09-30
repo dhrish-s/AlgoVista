@@ -244,7 +244,7 @@ The structure-specific trace resolvers and validators live in `src/services/`. T
 
 ## AI provider behavior
 
-AlgoVista supports Gemini, OpenAI, and Claude. Each provider can parse problems, handle coaching conversations, and generate execution steps. Some advanced helper actions, including dedicated reasoning evaluation, hint generation, and code explanation, remain Gemini-first. The provider manager can route tasks to a selected provider, retry failures, use a configured fallback, report the provider that handled the request, and cancel requests that exceed the default timeout.
+AlgoVista supports Gemini, OpenAI, and Claude. Each provider can parse problems, generate solutions in all six supported languages, handle coaching conversations, and generate execution steps. Some advanced helper actions, including dedicated reasoning evaluation, hint generation, and code explanation, remain Gemini-first. The provider manager can route tasks to a selected provider, retry failures, use a configured fallback, report the provider that handled the request, and cancel requests that exceed their operation deadline.
 
 All three providers use the same execution-step fields and operation types. Supported operation types are `init`, `compare`, `move-pointer`, `swap`, `insert-map`, `lookup-map`, `push-stack`, `pop-stack`, `enqueue`, `dequeue`, `visit-node`, `update-dp`, `recurse-call`, `recurse-return`, `window-expand`, `window-shrink`, `return`, `found`, and `assign`.
 
@@ -257,12 +257,20 @@ All providers can emit each of the eight visualization categories. Trace storage
 
 The compact format prevents large structures from being repeated across every step. This reduces provider output size and lowers the chance of reaching output token limits on larger traces. AlgoVista validates and folds these changes into complete immutable snapshots before storing the trace. A malformed compact base rejects the provider attempt and allows fallback. An invalid later delta is skipped while the next valid delta continues from the last accepted snapshot.
 
-Provider requests use a 30-second default timeout. Caller cancellation, problem changes, and component unmounting also abort in-flight generation. Provider API errors, timeout errors, and output truncation are surfaced with specific messages instead of leaving the interface in an indefinite loading state.
+Timeouts match the expected response size of each operation:
+
+| Operation | Deadline |
+| --- | --- |
+| Problem parsing | 45 seconds |
+| Solution generation | 45 seconds |
+| Step generation and Sync My Code | 180 seconds |
+| Small helper operations | 30 seconds |
+
+Large traces receive more time without losing hung-request protection. Caller cancellation, problem changes, and component unmounting still abort in-flight generation immediately. Provider API errors, timeout errors, and output truncation are surfaced with specific messages instead of leaving the interface in an indefinite loading state.
 
 ## Current notes and limitations
 
 - Execution traces are limited to 50 accepted steps. Longer traces show the first reliable portion.
-- Provider requests use a 30-second default timeout unless the caller supplies another value.
 - Tree rendering is limited to 100 nodes.
 - Graph rendering is limited to 100 nodes and 300 edges.
 - DP-table rendering is limited to 2,500 cells.
