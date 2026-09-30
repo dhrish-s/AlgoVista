@@ -69,6 +69,34 @@ AlgoVista supports eight visualization categories:
 | DP table | Rectangular values, labels, active cells, and highlighted cells |
 | Linked list | Singly linked nodes, the head, pointer relationships, and active nodes |
 
+## See AlgoVista in action
+
+These screenshots were captured from real AlgoVista sessions running through the normal problem, reasoning, solution, and trace flow.
+
+### Follow a stack algorithm line by line
+
+Valid Parentheses uses stack-based matching. The editor, current action, variables, and visual state all advance from the same execution step.
+
+<p align="center">
+  <img src="docs/images/valid-parentheses-stack.png" alt="AlgoVista tracing Valid Parentheses with a stack" width="100%" />
+</p>
+
+### See recursion move through a tree
+
+Validate Binary Search Tree carries lower and upper bounds through each recursive call. The active node and call variables stay beside the highlighted source line.
+
+<p align="center">
+  <img src="docs/images/validate-bst-tree.png" alt="AlgoVista tracing Validate Binary Search Tree" width="100%" />
+</p>
+
+### Watch a dynamic programming table fill
+
+Unique Paths builds a two-dimensional table while the editor explains the update that produced each state.
+
+<p align="center">
+  <img src="docs/images/unique-paths-dp.png" alt="AlgoVista tracing Unique Paths with a DP table" width="100%" />
+</p>
+
 ## Tech stack
 
 - React 19
