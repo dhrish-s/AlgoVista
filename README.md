@@ -37,8 +37,8 @@ The experience is reasoning-first. You explain an approach before the editor unl
 2. Let an AI provider parse the problem, examples, constraints, starter code, and possible approaches.
 3. Select an approach and review its expected time and space complexity.
 4. Explain your reasoning before writing code.
-5. Unlock the Monaco editor and implement the solution.
-6. Generate an execution trace from the selected approach or the current user code.
+5. Unlock the Monaco editor and work in TypeScript, Python, C++, Java, C, or Ruby.
+6. Run Ideal Logic to generate matching solution code and a trace, or use Sync My Code to trace your current code without replacing it.
 7. Move through the trace manually or use playback controls.
 8. Inspect the visualization, active source line, explanation, and variable state at each step.
 
@@ -48,12 +48,15 @@ The experience is reasoning-first. You explain an approach before the editor unl
 - AI-assisted parsing with confidence reporting and user confirmation for uncertain input
 - Approach suggestions with complexity information
 - A reasoning-first editor unlock flow
-- Monaco-based code editing with active-line highlighting
-- Trace generation for an ideal approach or the user's current code
+- Monaco-based editing for TypeScript, Python, C++, Java, C, and Ruby
+- Ideal solution generation for the selected approach and language
+- User-code tracing that preserves manually written or edited code
+- Validated source-line references that keep code and trace highlights aligned
 - Step controls with play, pause, previous, next, and reset
 - Variable inspection alongside the active visualization
 - AI coaching focused on hints and reasoning instead of immediately providing code
 - Configurable primary and fallback AI providers with visible provider status
+- Persistent, validated result caching that avoids unnecessary provider requests
 - Persisted workspace state, panel layout, AI settings, and learning progress
 
 AlgoVista supports eight visualization categories:
