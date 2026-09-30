@@ -230,6 +230,7 @@ AlgoVista/
     services/                   Problem loading, trace validation, and snapshot folding
       ai/                       Provider manager, configuration, and provider types
         providers/              Gemini, OpenAI, and Claude adapters
+      cache/                    Validated result cache, identities, and storage
     store/                      Zustand state, persistence, and migrations
     lib/                        Shared formatting and class-name utilities
     types.ts                    Problem, execution-step, and visualization contracts
@@ -267,6 +268,12 @@ Timeouts match the expected response size of each operation:
 | Small helper operations | 30 seconds |
 
 Large traces receive more time without losing hung-request protection. Caller cancellation, problem changes, and component unmounting still abort in-flight generation immediately. Provider API errors, timeout errors, and output truncation are surfaced with specific messages instead of leaving the interface in an indefinite loading state.
+
+### Result caching
+
+AlgoVista caches validated problem parses, generated solutions, and execution traces in IndexedDB. Cache keys include the inputs that affect correctness, such as the problem, approach, source code, language, trace mode, provider, model, and contract version. Duplicate requests already in progress are shared instead of being sent twice.
+
+The persistent cache is capped at 25 MiB and removes least-recently-used entries when space is needed. Invalid or outdated entries are rejected before reuse. Use **Clear cached results** in settings to remove saved results, or choose **Re-run Viz** to request a fresh trace while keeping the current solution code.
 
 ## Current notes and limitations
 
